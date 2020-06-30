@@ -54,7 +54,7 @@ public class FishMarketAgent extends POAAgent{
 			 MessageTemplate templateAddBuyerProtocol = MessageTemplate.and(
 					 messageTemplate, MessageTemplate.MatchConversationId("AddBuyerProtocol"));
 		      
-			 // Añadimos el protocolo de adicion del comprador.
+			 // A�adimos el protocolo de adicion del comprador.
 			 addBehaviour(new AddBuyerProtocolResponder(this,templateAddBuyerProtocol));
 			 this.getLogger().info("INFO", "AddBuyerProtocol sucessfully added");
 */		
@@ -68,7 +68,7 @@ public class FishMarketAgent extends POAAgent{
 				doDelete();
 			}
 		} else {
-			this.getLogger().info("ERROR", "Requiere fichero de configuración.");
+			this.getLogger().info("ERROR", "Requiere fichero de configuracion.");
 			doDelete();
 		}
 	}

@@ -6,7 +6,7 @@ import jade.lang.acl.ACLMessage;
 import jade.proto.AchieveREInitiator;
 
 /**
- * Clase que modela el protocolo de a�adir un comprador
+ * Clase que modela el protocolo de a�adir un comprador
  * en la parte del initiator (el que implementa comprador).
  * 
  * @author Javier Martinez Valverde
@@ -14,7 +14,7 @@ import jade.proto.AchieveREInitiator;
  *
  */
 @SuppressWarnings("serial")
-public class AddBuyerProtocolInitiator extends AchieveREInitiator{
+public class AddBuyerProtocolInitiator extends AchieveREInitiator {
 
 	/*
 	 * Referencia al agente Comprador.
@@ -36,7 +36,7 @@ public class AddBuyerProtocolInitiator extends AchieveREInitiator{
 		try {
 			buyer = (BuyerAgent) a;
 		} catch (ClassCastException e) {
-			// Si ocurre algún error informamos de ello y lo lanzamos hacia arriba.
+			// Si ocurre algun error informamos de ello y lo lanzamos hacia arriba.
 			buyer.getLogger().info("ERROR", "The agent is not an instance of class that we expect (" + BuyerAgent.class.getName() + ").");
 			e.printStackTrace();
 			throw e;
@@ -44,7 +44,7 @@ public class AddBuyerProtocolInitiator extends AchieveREInitiator{
 	}
 	/**
 	 * Maneja los mensajes inform recibidos.
-	 * Se llama al padre y se añaden ordenes para la depuración.
+	 * Se llama al padre y se a�aden ordenes para la depuracion.
 	 */
 	@Override
 	protected void handleInform(ACLMessage msg) {
@@ -53,7 +53,7 @@ public class AddBuyerProtocolInitiator extends AchieveREInitiator{
 	}
 	/**
 	 * Maneja los mensajes failure recibidos.
-	 * Se llama al padre y se añaden ordenes para la depuración.
+	 * Se llama al padre y se a�aden ordenes para la depuracion.
 	 */
 	@Override
 	protected void handleFailure(ACLMessage msg) {
@@ -62,7 +62,7 @@ public class AddBuyerProtocolInitiator extends AchieveREInitiator{
 	}
 	/**
 	 * Maneja los mensajes refuse recibidos.
-	 * Se llama al padre y se añaden ordenes para la depuracion.
+	 * Se llama al padre y se a�aden ordenes para la depuracion.
 	 */
 	@Override
 	protected void handleRefuse(ACLMessage msg) {
@@ -71,7 +71,7 @@ public class AddBuyerProtocolInitiator extends AchieveREInitiator{
 	}
 	/**
 	 * Maneja los mensajes notUnderstood recibidos.
-	 * Se llama al padre y se aÑaden ordenes para la depuración.
+	 * Se llama al padre y se a�aden ordenes para la depuracion.
 	 */
 	@Override
 	protected void handleNotUnderstood(ACLMessage msg) {

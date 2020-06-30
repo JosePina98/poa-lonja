@@ -10,7 +10,7 @@ import jade.lang.acl.MessageTemplate;
 import jade.proto.AchieveREResponder;
 
 /**
- * Clase que modela el protocolo de añadir un comprador
+ * Clase que modela el protocolo de a�adir un comprador
  * en la parte del responder 
  *
  */
@@ -46,8 +46,8 @@ public class AddBuyerProtocolResponder extends AchieveREResponder
 	}
 	
 	/**
-	 * Metodo que prepara la respuesta a la petición.
-	 * En caso de acceder a la petición se obvia el AGREE
+	 * Metodo que prepara la respuesta a la peticion.
+	 * En caso de acceder a la peticion se obvia el AGREE
 	 * sino se manda un REFUSE.
 	 * 
 	 * @param request El mensaje recibido.
@@ -69,7 +69,7 @@ public class AddBuyerProtocolResponder extends AchieveREResponder
 	}
 	
 	/**
-	 * Metodo que lleva a cabo la petición propuesta
+	 * Metodo que lleva a cabo la peticion propuesta
 	 * y se envía un INFORM.
 	 * 
 	 *  @param request  El mensaje recibido.

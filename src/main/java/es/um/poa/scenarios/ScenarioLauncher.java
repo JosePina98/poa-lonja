@@ -34,7 +34,7 @@ public class ScenarioLauncher {
 				// Obtenemos una instancia del entorno runtime de Jade
 				Runtime rt = Runtime.instance();
 				
-				// Terminamos la máquinq virtual si no hubiera ningún contenedor de agentes activo
+				// Terminamos la maquinq virtual si no hubiera ningun contenedor de agentes activo
 				rt.setCloseVM(true);
 				
 				// Lanzamos una plataforma en el puerto 8888
@@ -51,7 +51,7 @@ public class ScenarioLauncher {
 				AgentController rma = mc.createNewAgent("rma", "jade.tools.rma.rma", new Object[0]);
 				rma.start();
 
-				// INICIALIZACIÓN DE LOS AGENTES
+				// INICIALIZACION DE LOS AGENTES
 
 				// FishMarket
 				AgentRefConfig marketConfig = scenario.getFishMarket();

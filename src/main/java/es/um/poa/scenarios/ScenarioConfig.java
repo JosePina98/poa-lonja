@@ -4,7 +4,7 @@ import java.util.List;
 
 
 /**
- * Define los parámetros que conforman un escenario para su simulación desde un fichero YAML.
+ * Define los parametros que conforman un escenario para su simulacion desde un fichero YAML.
  * Ref: https://www.baeldung.com/java-snake-yaml
  * 
  *

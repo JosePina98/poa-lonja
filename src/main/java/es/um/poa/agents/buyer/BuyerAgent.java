@@ -27,7 +27,7 @@ public class BuyerAgent extends POAAgent {
 				doDelete();
 			}
 		} else {
-			getLogger().info("ERROR", "Requiere fichero de cofiguración.");
+			getLogger().info("ERROR", "Requiere fichero de cofiguracion.");
 			doDelete();
 		}
 	}
