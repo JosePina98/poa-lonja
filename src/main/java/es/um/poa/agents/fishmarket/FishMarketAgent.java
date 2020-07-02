@@ -9,6 +9,8 @@ import org.yaml.snakeyaml.Yaml;
 import es.um.poa.agents.POAAgent;
 import es.um.poa.protocols.addbuyer.AddBuyerProtocolResponder;
 import jade.core.AID;
+import jade.domain.FIPANames;
+import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
 
 public class FishMarketAgent extends POAAgent{
@@ -27,8 +29,7 @@ public class FishMarketAgent extends POAAgent{
 		return true;
 	}
 	
-	
-	
+		
 	public void setup() {
 		super.setup();
 		Object[] args = getArguments();
@@ -41,28 +42,19 @@ public class FishMarketAgent extends POAAgent{
 				
 				
 			// Crear los comportamientos correspondientes
-/*
-	        MessageTemplate messageTemplate = null;
-	        		// Completa con el protocolo FIPA correspondiente y el mensajes correspondiente 
-	        		//MessageTemplate.and(
-	     		  	//MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.<>),
-	     		  	//MessageTemplate.MatchPerformative(ACLMessage.<>) 
-	     		  	//);
-	        		
-			
-			
-			 MessageTemplate templateAddBuyerProtocol = MessageTemplate.and(
+
+			// Completa con el protocolo FIPA correspondiente y el mensajes correspondiente 
+	        MessageTemplate messageTemplate = MessageTemplate.and(MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_REQUEST),
+	     		  	MessageTemplate.MatchPerformative(ACLMessage.REQUEST));
+	        							
+				
+	        MessageTemplate templateAddBuyerProtocol = MessageTemplate.and(
 					 messageTemplate, MessageTemplate.MatchConversationId("AddBuyerProtocol"));
 		      
 			 // Añadimos el protocolo de adicion del comprador.
 			 addBehaviour(new AddBuyerProtocolResponder(this,templateAddBuyerProtocol));
 			 this.getLogger().info("INFO", "AddBuyerProtocol sucessfully added");
-*/		
-				
-				
-				
-				
-				
+								
 				
 			} else {
 				doDelete();
