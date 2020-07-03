@@ -3,6 +3,7 @@ package es.um.poa.scenarios;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.FileHandler;
 import java.util.logging.Level;
@@ -13,11 +14,15 @@ import org.yaml.snakeyaml.Yaml;
 
 import es.um.poa.utils.AgentLoggingHTMLFormatter;
 import jade.core.Runtime;
+import jade.tools.sniffer.Sniffer;
 import jade.core.Profile;
 import jade.core.ProfileImpl;
 import jade.wrapper.*;
 
 public class ScenarioLauncher {
+	
+	//  LOS AGENTES EN EL SNIFFER
+	static List<String> simulationAgents = new LinkedList<String>();
 	
 	public static void main(String[] args) throws SecurityException, IOException {
 		if(args.length == 1) {
@@ -34,7 +39,7 @@ public class ScenarioLauncher {
 				// Obtenemos una instancia del entorno runtime de Jade
 				Runtime rt = Runtime.instance();
 				
-				// Terminamos la maquinq virtual si no hubiera ningun contenedor de agentes activo
+				// Terminamos la máquinq virtual si no hubiera ningún contenedor de agentes activo
 				rt.setCloseVM(true);
 				
 				// Lanzamos una plataforma en el puerto 8888
@@ -51,11 +56,10 @@ public class ScenarioLauncher {
 				AgentController rma = mc.createNewAgent("rma", "jade.tools.rma.rma", new Object[0]);
 				rma.start();
 
-				// INICIALIZACION DE LOS AGENTES
-
 				// FishMarket
 				AgentRefConfig marketConfig = scenario.getFishMarket();
 				Object[] marketConfigArg = {marketConfig.getConfig()};
+				simulationAgents.add(marketConfig.getName());
 				AgentController market = mc.createNewAgent(
 						marketConfig.getName(), 
 						es.um.poa.agents.fishmarket.FishMarketAgent.class.getName(), 
@@ -65,26 +69,34 @@ public class ScenarioLauncher {
 				// Buyers
 				List<AgentRefConfig> buyers = scenario.getBuyers();
 				for(AgentRefConfig buyer: buyers) {
-					System.out.println(buyer);
+
 					Object[] buyerConfigArg = {buyer.getConfig()};
+					System.out.println(buyer);
+					simulationAgents.add(buyer.getName());
+
 					AgentController b = mc.createNewAgent(
 							buyer.getName(), 
 							es.um.poa.agents.buyer.BuyerAgent.class.getName(), 
 							buyerConfigArg);
 					b.start();
 				}
-				
+
 				// Sellers
 				List<AgentRefConfig> sellers = scenario.getSellers();
 				for(AgentRefConfig seller: sellers) {
 					System.out.println(seller);
 					Object[] buyerConfigArg = {seller.getConfig()};
+					
+					simulationAgents.add(seller.getName());
 					AgentController b = mc.createNewAgent(
 							seller.getName(), 
 							es.um.poa.agents.seller.SellerAgent.class.getName(), 
 							buyerConfigArg);
 					b.start();
 				}
+			
+				addSniffer(mc,simulationAgents);
+					
 			}
 			catch(Exception e) {
 				e.printStackTrace();
@@ -104,4 +116,20 @@ public class ScenarioLauncher {
 
 	      lm.addLogger(logger);
 	}
+	
+	/**
+	 * Metodo para incluir el agente sniffer al contenedor principal de agentes. 
+	 * @param mc Contenedor principal de agentes.
+	 * @param agents List<String> con los agentes a incluir en el sniffer.
+	 * @throws Exception
+	 */
+	private static void addSniffer(AgentContainer mc, List<String> agents) throws Exception {
+		// Array de argumentos para el sniffer, contiene los nombres de los agentes sobre		
+		agents.add("df");
+		Object[] arguments = { String.join(";", agents) };
+		AgentController sniffer = mc.createNewAgent("snifferAgent",Sniffer.class.getName(), arguments);
+		sniffer.start();
+		
+	}
+	
 }
