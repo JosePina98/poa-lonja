@@ -54,7 +54,7 @@ public class AddBuyerProtocolResponder extends AchieveREResponder
 	 */
 	@Override
 	protected ACLMessage handleRequest(ACLMessage request) throws NotUnderstoodException, RefuseException {
-		
+
 		System.out.println();
 		fishMarket.getLogger().info("INFO",fishMarket.getLocalName() + ": REQUEST to admit a buyer received from " + request.getSender().getLocalName());
 		// Comprobamos si podemos llevar a cabo la peticion.
@@ -70,10 +70,10 @@ public class AddBuyerProtocolResponder extends AchieveREResponder
 	
 	/**
 	 * Metodo que lleva a cabo la peticion propuesta
-	 * y se envía un INFORM.
+	 * y se envia un INFORM.
 	 * 
 	 *  @param request  El mensaje recibido.
-	 *  @param response La respuesta para el agente que ha realizado la petición.
+	 *  @param response La respuesta para el agente que ha realizado la peticion.
 	 */
 	@Override
 	protected ACLMessage prepareResultNotification(ACLMessage request, ACLMessage response) throws FailureException {
