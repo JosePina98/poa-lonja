@@ -1,6 +1,6 @@
 package es.um.poa.agents.seller;
 
-public class Lot {
+public class Lote {
     private float kg;
     private String type;
         

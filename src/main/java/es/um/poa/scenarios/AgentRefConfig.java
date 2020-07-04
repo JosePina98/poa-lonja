@@ -1,24 +1,24 @@
 package es.um.poa.scenarios;
 
 public class AgentRefConfig {
-	private String name;
-	private String config;
+	private String nombre;
+	private String configuracion;
 	
 	@Override
 	public String toString() {
-		return "[name=" + name + ", config=" + config + "]";
+		return "[nombre=" + nombre + ", configuracion=" + configuracion + "]";
 	}
-	public String getName() {
-		return name;
+	public String getNombre() {
+		return nombre;
 	}
-	public void setName(String name) {
-		this.name = name;
+	public void setNombre(String nombre) {
+		this.nombre = nombre;
 	}
-	public String getConfig() {
-		return config;
+	public String getConfiguracion() {
+		return configuracion;
 	}
-	public void setConfig(String config) {
-		this.config = config;
+	public void setConfiguracion(String configuracion) {
+		this.configuracion = configuracion;
 	}
 	
 	

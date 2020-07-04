@@ -10,49 +10,58 @@ import java.util.List;
  *
  */
 public class ScenarioConfig {
-	private String name;
-	private String description;
-	private AgentRefConfig fishMarket;
-	private List<AgentRefConfig> buyers;
-	private List<AgentRefConfig> sellers;
+	private String nombre;
+	private String descripcion;
+	private AgentRefConfig lonja;
+	private List<AgentRefConfig> compradores;
+	private List<AgentRefConfig> vendedores;
 	
 	@Override
 	public String toString() {
-		return "ScenarioConfig [name=" + name + ", description=" + description + ",\n"+
-				"fishMarket=" + fishMarket + ",\n"+
-				"buyers=" + buyers + ",\n"+
-				"sellers=" + sellers + "]";
+		return "ScenarioConfig [nombre=" + nombre + ", descripcion=" + descripcion + ",\n"+
+				"lonja=" + lonja + ",\n"+
+				"compradores=" + compradores + ",\n"+
+				"vendedores=" + vendedores + "]";
 	}
 
-	public String getName() {
-		return name;
+	public String getNombre() {
+		return nombre;
 	}
-	public void setName(String name) {
-		this.name = name;
+
+	public void setNombre(String nombre) {
+		this.nombre = nombre;
 	}
-	public String getDescription() {
-		return description;
+
+	public String getDescripcion() {
+		return descripcion;
 	}
-	public void setDescription(String description) {
-		this.description = description;
+
+	public void setDescripcion(String descripcion) {
+		this.descripcion = descripcion;
 	}
-	public AgentRefConfig getFishMarket() {
-		return fishMarket;
+
+	public AgentRefConfig getLonja() {
+		return lonja;
 	}
-	public void setFishMarket(AgentRefConfig fishMarket) {
-		this.fishMarket = fishMarket;
+
+	public void setLonja(AgentRefConfig lonja) {
+		this.lonja = lonja;
 	}
-	public List<AgentRefConfig> getBuyers() {
-		return buyers;
+
+	public List<AgentRefConfig> getCompradores() {
+		return compradores;
 	}
-	public void setBuyers(List<AgentRefConfig> buyers) {
-		this.buyers = buyers;
+
+	public void setCompradores(List<AgentRefConfig> compradores) {
+		this.compradores = compradores;
 	}
-	public List<AgentRefConfig> getSellers() {
-		return sellers;
+
+	public List<AgentRefConfig> getVendedores() {
+		return vendedores;
 	}
-	public void setSellers(List<AgentRefConfig> sellers) {
-		this.sellers = sellers;
+
+	public void setVendedores(List<AgentRefConfig> vendedores) {
+		this.vendedores = vendedores;
 	}
 
 }

@@ -31,7 +31,7 @@ public class ScenarioLauncher {
 			InputStream inputStream = new FileInputStream(config_file);
 			ScenarioConfig scenario = yaml.load(inputStream);
 			
-			initLogging(scenario.getName());
+			initLogging(scenario.getNombre());
 			
 			System.out.println(scenario);
 			try {
@@ -57,39 +57,39 @@ public class ScenarioLauncher {
 				rma.start();
 
 				// FishMarket
-				AgentRefConfig marketConfig = scenario.getFishMarket();
-				Object[] marketConfigArg = {marketConfig.getConfig()};
-				simulationAgents.add(marketConfig.getName());
+				AgentRefConfig marketConfig = scenario.getLonja();
+				Object[] marketConfigArg = {marketConfig.getConfiguracion()};
+				simulationAgents.add(marketConfig.getNombre());
 				AgentController market = mc.createNewAgent(
-						marketConfig.getName(), 
+						marketConfig.getNombre(), 
 						es.um.poa.agents.fishmarket.FishMarketAgent.class.getName(), 
 						marketConfigArg);
 				market.start();
 
 				// Buyers
-				List<AgentRefConfig> buyers = scenario.getBuyers();
+				List<AgentRefConfig> buyers = scenario.getCompradores();
 				for(AgentRefConfig buyer: buyers) {
 
-					Object[] buyerConfigArg = {buyer.getConfig()};
+					Object[] buyerConfigArg = {buyer.getConfiguracion()};
 					System.out.println(buyer);
-					simulationAgents.add(buyer.getName());
+					simulationAgents.add(buyer.getNombre());
 
 					AgentController b = mc.createNewAgent(
-							buyer.getName(), 
+							buyer.getNombre(), 
 							es.um.poa.agents.buyer.BuyerAgent.class.getName(), 
 							buyerConfigArg);
 					b.start();
 				}
 
 				// Sellers
-				List<AgentRefConfig> sellers = scenario.getSellers();
+				List<AgentRefConfig> sellers = scenario.getVendedores();
 				for(AgentRefConfig seller: sellers) {
 					System.out.println(seller);
-					Object[] buyerConfigArg = {seller.getConfig()};
+					Object[] buyerConfigArg = {seller.getConfiguracion()};
 					
-					simulationAgents.add(seller.getName());
+					simulationAgents.add(seller.getNombre());
 					AgentController b = mc.createNewAgent(
-							seller.getName(), 
+							seller.getNombre(), 
 							es.um.poa.agents.seller.SellerAgent.class.getName(), 
 							buyerConfigArg);
 					b.start();

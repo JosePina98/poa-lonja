@@ -1,6 +1,6 @@
 !!es.um.poa.agents.seller.SellerAgentConfig
-lots:
+lotes:
   - kg: 10.0
-    type: "sardina"
+    tipo: "sardina"
   - kg: 6.0
-    type: "boqueron"
+   	tipo: "boqueron"

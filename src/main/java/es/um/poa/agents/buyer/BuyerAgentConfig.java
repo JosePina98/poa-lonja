@@ -1,18 +1,18 @@
 package es.um.poa.agents.buyer;
 
 public class BuyerAgentConfig {
-	private float budget;
+	private float presupuesto;
 	
 	@Override
 	public String toString() {
-		return "BuyerAgentConfig [budget=" + budget + "]";
+		return "BuyerAgentConfig [presupuesto=" + presupuesto + "]";
 	}
 
-	public float getBudget() {
-		return budget;
+	public float getPresupuesto() {
+		return presupuesto;
 	}
 
-	public void setBudget(float budget) {
-		this.budget = budget;
+	public void setPresupuesto(float presupuesto) {
+		this.presupuesto = presupuesto;
 	}
 }

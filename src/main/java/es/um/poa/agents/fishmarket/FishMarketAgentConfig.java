@@ -1,17 +1,17 @@
 package es.um.poa.agents.fishmarket;
 
 public class FishMarketAgentConfig {
-	private int numberOfLanes;
+	private int numeroDeLineas;
 	
 	@Override
 	public String toString() {
-		return "[numberOfLanes=" + numberOfLanes + "]";
+		return "[numeroDeLineas=" + numeroDeLineas + "]";
 	}
 	
-	public int getNumberOfLanes() {
-		return numberOfLanes;
+	public int getNumeroDeLineas() {
+		return numeroDeLineas;
 	}
-	public void setNumberOfLanes(int numberOfLanes) {
-		this.numberOfLanes = numberOfLanes;
+	public void setNumeroDeLineas(int numeroDeLineas) {
+		this.numeroDeLineas = numeroDeLineas;
 	}
 }

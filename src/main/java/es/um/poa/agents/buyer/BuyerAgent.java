@@ -3,29 +3,28 @@ package es.um.poa.agents.buyer;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
-import java.util.HashMap;
 
 import org.yaml.snakeyaml.Yaml;
 
 import es.um.poa.agents.POAAgent;
-import es.um.poa.protocols.addbuyer.AddBuyerProtocolInitiator;
 import es.um.poa.utils.ConversationID;
 import jade.core.AID;
-import jade.core.behaviours.Behaviour;
+import jade.core.Agent;
+import jade.core.behaviours.SequentialBehaviour;
 import jade.domain.DFService;
 import jade.domain.FIPAException;
 import jade.domain.FIPANames;
 import jade.domain.FIPAAgentManagement.DFAgentDescription;
 import jade.domain.FIPAAgentManagement.ServiceDescription;
 import jade.lang.acl.ACLMessage;
-import jade.lang.acl.MessageTemplate;
+import jade.proto.AchieveREInitiator;
 
 public class BuyerAgent extends POAAgent {
 		
 	private static final long serialVersionUID = 1L;
 	
 	private float presupuesto;
-	private HashMap<String, Float> lotesComprados;
+	//private HashMap<String, Float> lotesComprados;
 	
 	private AID lonja;
 	
@@ -41,9 +40,10 @@ public class BuyerAgent extends POAAgent {
 		        
 				System.out.println("Comprador " + this.getName() + " inicializado.");
 				
-				lotesComprados = new HashMap<>();
-				presupuesto = config.getBudget();
+				//lotesComprados = new HashMap<>();
+				presupuesto = config.getPresupuesto();
 				
+				// Buscamos al Agente Lonja
 				DFAgentDescription template = new DFAgentDescription();
 				ServiceDescription sd = new ServiceDescription();
 				sd.setType("Lonja");
@@ -60,14 +60,31 @@ public class BuyerAgent extends POAAgent {
 						if (result.length > 0) break;
 					}
 					lonja = result[0].getName();
-					this.getLogger().info("INFO", "Agente Lonja encontrado.");
+					this.getLogger().info("INFO", "Agente Lonja encontrado");
 				} catch (FIPAException f) {
 					f.printStackTrace();
 				}
 				
-				addBehaviour(new ProtocoloAdmisionCompradorInitiator());
+				// Creo un comportamiento secuencial para que se ejecute un protocolo despues del otro
+				SequentialBehaviour sb = new SequentialBehaviour();
 				
-				this.getLogger().info("ProtocoloAdmisionComprador - Initiator", "ProtocoloAdmisionComprador iniciado");
+				// Añado el protocolo de admisión del comprador
+				ACLMessage aux = new ACLMessage(ACLMessage.REQUEST);
+				aux.setProtocol(FIPANames.InteractionProtocol.FIPA_REQUEST);
+				aux.addReceiver(lonja);
+				aux.setConversationId(ConversationID.ADMISION_COMPRADOR);
+				sb.addSubBehaviour(new ProtocoloAdmisionCompradorInitiator(this, aux));
+				
+				// Añado el protocolo de apertura de la linea de credito del comprador
+				ACLMessage credito = new ACLMessage(ACLMessage.REQUEST);
+				credito.setProtocol(FIPANames.InteractionProtocol.FIPA_REQUEST);
+				credito.addReceiver(lonja);
+				credito.setConversationId(ConversationID.APERTURA_CREDITO);
+				credito.setContent(Float.toString(presupuesto));
+				sb.addSubBehaviour(new ProtocoloAperturaCreditoInitiator(this, credito));
+				
+				addBehaviour(sb);
+
 			} else {
 				doDelete();
 			}
@@ -90,56 +107,116 @@ public class BuyerAgent extends POAAgent {
 		}
 		return config;
 	}
+
 	
-	private class ProtocoloAdmisionCompradorInitiator extends Behaviour {
+	@SuppressWarnings("serial")
+	private class ProtocoloAdmisionCompradorInitiator extends AchieveREInitiator {
 
-		private static final long serialVersionUID = 1362506647955406907L;
-		private int step = 0;
-		private MessageTemplate template; //Plantilla
-		
-		@Override
-		public void action() {
-			switch(step) {
-			case 0:
-				ACLMessage peticion = new ACLMessage(ACLMessage.REQUEST);
-				peticion.addReceiver(lonja);
-				peticion.setConversationId(ConversationID.ADMISION_COMPRADOR);
-				peticion.setReplyWith("req" + System.currentTimeMillis());
-				myAgent.send(peticion);
-				
-				template = MessageTemplate.and(MessageTemplate.MatchConversationId(ConversationID.ADMISION_COMPRADOR), 
-							MessageTemplate.MatchInReplyTo(peticion.getReplyWith()));
-				
-				step = 1;
-				break;	
-			
-			case 1:
-				ACLMessage respuesta = myAgent.receive(template);
-				
-				if (respuesta != null) {
-					if (respuesta.getPerformative() == ACLMessage.INFORM) {
-						//Nos han admitido
-						//getLogger().info("ProtocoloAdmisionCompradorInitiator", "Registro Aceptado");
-						//ProtocoloAperturaCredito?
-					} else {
-						System.out.println("Fallo en el Registro - ProtocoloAdmisionComprador");
-					}
-					step = 2;
-				} else {
-					block();
-				}
-				
-				break;
-			}
+		public ProtocoloAdmisionCompradorInitiator(Agent a, ACLMessage msg) {
+			super(a, msg);
 		}
-
+		
+		/**
+		 * Este metodo es ejecutado justo antes del comienzo de la ejecucion 
+		 * del comportamiento. Lo uso para imprimir mensajes de log.
+		 */
 		@Override
-		public boolean done() {
-			if (step == 2) {
-				return true;
-			} else {
-				return false;
-			}
+		public void onStart() {
+			super.onStart();
+			getLogger().info("ProtocoloAdmisionComprador - Initiator", "ProtocoloAdmisionComprador iniciado");
+		}
+		
+		/**
+		 * Maneja los mensajes inform recibidos.
+		 * Se llama al padre y se añaden ordenes para la depuracion.
+		 */
+		@Override
+		protected void handleInform(ACLMessage msg) {
+			super.handleInform(msg);
+			getLogger().info("ProtocoloAdmisionComprador - Initiator", "INFORM recibido de \"" + msg.getSender().getLocalName() + "\", admision aceptada");
+		}
+		/**
+		 * Maneja los mensajes failure recibidos.
+		 * Se llama al padre y se añaden ordenes para la depuracion.
+		 */
+		@Override
+		protected void handleFailure(ACLMessage msg) {
+			super.handleFailure(msg);
+			getLogger().info("ProtocoloAdmisionComprador - Initiator", "FAILURE recibido de \"" + msg.getSender().getLocalName() + "\", admision denegada");
+		}
+		/**
+		 * Maneja los mensajes refuse recibidos.
+		 * Se llama al padre y se añaden ordenes para la depuracion.
+		 */
+		@Override
+		protected void handleRefuse(ACLMessage msg) {
+			super.handleRefuse(msg);
+			getLogger().info("ProtocoloAdmisionComprador - Initiator", "REFUSE recibido de \"" + msg.getSender().getLocalName() + "\", admision denegada");
+		}
+		/**
+		 * Maneja los mensajes notUnderstood recibidos.
+		 * Se llama al padre y se añaden ordenes para la depuracion.
+		 */
+		@Override
+		protected void handleNotUnderstood(ACLMessage msg) {
+			super.handleNotUnderstood(msg);
+			getLogger().info("ProtocoloAdmisionComprador - Initiator", "NOTUNDERSTOOD recibido de \"" + msg.getSender().getLocalName() + "\"");
+		}
+		
+	}
+	
+	@SuppressWarnings("serial")
+	private class ProtocoloAperturaCreditoInitiator extends AchieveREInitiator {
+
+		public ProtocoloAperturaCreditoInitiator(Agent a, ACLMessage msg) {
+			super(a, msg);
+		}
+		
+		/**
+		 * Este metodo es ejecutado justo antes del comienzo de la ejecucion 
+		 * del comportamiento. Lo uso para imprimir mensajes de log.
+		 */
+		@Override
+		public void onStart() {
+			super.onStart();
+			getLogger().info("ProtocoloAperturaCredito - Initiator", "ProtocoloAperturaCredito iniciado");
+		}
+		
+		/**
+		 * Maneja los mensajes inform recibidos.
+		 * Se llama al padre y se añaden ordenes para la depuracion.
+		 */
+		@Override
+		protected void handleInform(ACLMessage msg) {
+			super.handleInform(msg);
+			getLogger().info("ProtocoloAperturaCredito - Initiator", "INFORM recibido de \"" + msg.getSender().getLocalName() + "\", linea de credito abierta");
+		}
+		/**
+		 * Maneja los mensajes failure recibidos.
+		 * Se llama al padre y se añaden ordenes para la depuracion.
+		 */
+		@Override
+		protected void handleFailure(ACLMessage msg) {
+			super.handleFailure(msg);
+			getLogger().info("ProtocoloAperturaCredito - Initiator", "FAILURE recibido de \"" + msg.getSender().getLocalName() + "\", apertura denegada");
+		}
+		/**
+		 * Maneja los mensajes refuse recibidos.
+		 * Se llama al padre y se añaden ordenes para la depuracion.
+		 */
+		@Override
+		protected void handleRefuse(ACLMessage msg) {
+			super.handleRefuse(msg);
+			getLogger().info("ProtocoloAperturaCredito - Initiator", "REFUSE recibido de \"" + msg.getSender().getLocalName() + "\", apertura denegada");
+		}
+		/**
+		 * Maneja los mensajes notUnderstood recibidos.
+		 * Se llama al padre y se añaden ordenes para la depuracion.
+		 */
+		@Override
+		protected void handleNotUnderstood(ACLMessage msg) {
+			super.handleNotUnderstood(msg);
+			getLogger().info("ProtocoloAperturaCredito - Initiator", "NOTUNDERSTOOD recibido de \"" + msg.getSender().getLocalName() + "\"");
 		}
 		
 	}
