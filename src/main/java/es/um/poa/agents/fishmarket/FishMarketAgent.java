@@ -2,6 +2,7 @@ package es.um.poa.agents.fishmarket;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -14,6 +15,8 @@ import es.um.poa.agents.seller.Lote;
 import es.um.poa.utils.ConversationID;
 import jade.core.AID;
 import jade.core.Agent;
+import jade.core.behaviours.CyclicBehaviour;
+import jade.core.behaviours.TickerBehaviour;
 import jade.domain.DFService;
 import jade.domain.FIPAException;
 import jade.domain.FIPANames;
@@ -25,13 +28,21 @@ import jade.domain.FIPAAgentManagement.ServiceDescription;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
 import jade.proto.AchieveREResponder;
+import jade.proto.ProposeInitiator;
 
 public class FishMarketAgent extends POAAgent{
 	
 	private static final long serialVersionUID = 1L;
-
+	private static final int LATENCIA = 5000;
+	private static final int VENTANA_DE_OPORTUNIDAD = 1000;
+	private static final float DECREMENTO_DE_PRECIO = 20.0F;
+	private static final double TIEMPO_MAXIMO_SUBASTA = 60000;
+	
 	private HashMap<AID, Float> mapaCompradores;
 	private HashMap<AID, List<Lote>> mapaVendedores;
+	private int tiempo = LATENCIA;
+	private float ingresos_lonja = 0;
+	private boolean activado = false;
 		
 	public void setup() {
 		super.setup();
@@ -76,7 +87,11 @@ public class FishMarketAgent extends POAAgent{
 						MessageTemplate.MatchConversationId(ConversationID.APERTURA_CREDITO));
 				addBehaviour(new ProtocoloAperturaCreditoResponder(this, protocolo_apertura_credito));
 				this.getLogger().info("INFO", "ProtocoloAperturaCredito anadido con exito");
-								
+				
+				addBehaviour(new ProtocoloDepositoResponder());
+				this.getLogger().info("INFO", "ProtocoloDeposito anadido con exito");
+				
+				addBehaviour(new ProtocoloSubastaInitiator());
 				
 			} else {
 				doDelete();
@@ -276,6 +291,233 @@ public class FishMarketAgent extends POAAgent{
 				throw new FailureException("unexpected-error");
 			}	
 		}
+		
+	}
+	
+	@SuppressWarnings("serial")
+	private class ProtocoloDepositoResponder extends CyclicBehaviour {
+
+		@Override
+		public void action() {
+
+			MessageTemplate template = MessageTemplate.and(MessageTemplate.MatchConversationId(ConversationID.DEPOSITO_CAPTURA), 
+					MessageTemplate.MatchPerformative(ACLMessage.REQUEST));
+			
+			ACLMessage request = myAgent.receive(template);
+			Lote lote = null;
+			
+			if (request != null) {
+				getLogger().info("ProtocoloDeposito - Responder", "El Vendedor \"" + request.getSender().getLocalName() + "\" quiere depositar sus capturas");
+				
+				ACLMessage respuesta = request.createReply();
+				respuesta.setProtocol(FIPANames.InteractionProtocol.FIPA_REQUEST);
+				try {
+					lote = (Lote) request.getContentObject();
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+				
+				if (mapaVendedores.containsKey(request.getSender()) && lote != null) {
+					List<Lote> aux = mapaVendedores.get(request.getSender());
+					
+					aux.add(lote);
+					
+					//TODO Iniciar linea de venta
+					activado = true;
+
+					respuesta.setPerformative(ACLMessage.INFORM);
+				} else {
+					respuesta.setPerformative(ACLMessage.REFUSE);
+				}
+				
+				myAgent.send(respuesta);
+			} else {
+				block();
+			}
+		}
+		
+	}
+	
+	@SuppressWarnings("serial")
+	private class ProtocoloSubastaInitiator extends CyclicBehaviour {
+		
+		private Lote lote;
+		private AID vendedor;
+		private List<AID> listaPosiblesCompradores;
+		private int step = 0;
+		private long tiempoInicioPropuesta;
+		private MessageTemplate template;
+		
+		@Override
+		public void action() {
+			if (!activado) return;
+			
+			switch (step) {
+			case 0: // No hay ninguna puja en marcha
+				
+				getLogger().info("ProtocoloSubasta - Initiator", "Viendo si se puede iniciar una nueva subasta en la linea de venta");
+
+				
+				// Inicializamos todas las variables
+				lote = null;
+				vendedor = null;
+				listaPosiblesCompradores = new LinkedList<AID>();
+				tiempoInicioPropuesta = 0;
+				template = null;
+				
+				// Comprobar que tenemos un lote valido para subastar
+				for (AID aid : mapaVendedores.keySet()) {
+					List<Lote> pilaLotes = mapaVendedores.get(aid);
+					
+					if (!pilaLotes.isEmpty()) {
+						lote = pilaLotes.get(0);
+						vendedor = aid;
+						break;
+					}
+
+				}
+				
+				if (lote != null && vendedor != null) {
+					// Comprobar que hay vendedores registrados y con la linea de credito abierta
+					for (AID aid : mapaCompradores.keySet()) {
+						if (mapaCompradores.get(aid) > lote.getPrecioReserva()) {
+							listaPosiblesCompradores.add(aid);
+						}
+					}
+				}
+				
+				if (listaPosiblesCompradores.size() > 0) {
+					step = 1; // Podemos arrancar una puja
+				} else {
+					try {
+						Thread.sleep(LATENCIA); // Ahora mismo no podemos arrancar ninguna puja, nos esperamos 4 segundos
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				}
+				break;
+				
+			case 1: // Enviamos una propuesta de precio a los posibles compradores
+				
+				getLogger().info("ProtocoloSubasta - Initiator", "NUEVA SUBASTA: " + vendedor.getLocalName() + " vende "
+							+ lote.getKg() + "Kg de " + lote.getTipo() + ". La subasta empieza en: "
+							+ lote.getPrecioSalida() + "e y el precio minimo es de " + lote.getPrecioReserva() + "e");
+
+				// Enviar un mensaje PROPOSE a cada comprador que tenga linea de credito abierta con mas dinero que el precio de reserva
+				ACLMessage propose = new ACLMessage(ACLMessage.PROPOSE);
+				propose.setProtocol(FIPANames.InteractionProtocol.FIPA_PROPOSE);
+				propose.setConversationId(ConversationID.SUBASTA);
+				propose.setReplyWith("propose" + System.currentTimeMillis());
+				try {
+					propose.setContentObject(lote);
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+				
+				for (AID posibleComprador : listaPosiblesCompradores) {
+					getLogger().info("ProtocoloSubasta - Initiator", "PROPOSE enviado a " + posibleComprador.getLocalName() + " para ver si puja por " + lote.getPrecioActual() + "e");
+					propose.addReceiver(posibleComprador);
+				}
+				myAgent.send(propose);
+				
+				MessageTemplate template1 = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.ACCEPT_PROPOSAL), 
+						MessageTemplate.MatchConversationId(ConversationID.PUJAR));
+				
+				template = MessageTemplate.and(template1, 
+						MessageTemplate.MatchInReplyTo(propose.getReplyWith()));
+
+				tiempo = VENTANA_DE_OPORTUNIDAD;
+				tiempoInicioPropuesta = System.currentTimeMillis();
+				step = 2;
+				break;
+				
+			case 2: // Esperamos respuestas de los posibles compradores
+				
+				if (System.currentTimeMillis() - tiempoInicioPropuesta >= TIEMPO_MAXIMO_SUBASTA) {
+					// Se ha cumplido el tiempo maximo de la subasta, subasta terminada
+					getLogger().info("ProtocoloSubasta - Initiator", "SUBASTA TERMINADA - Se ha cumplido el tiempo maximo de subasta, el lote sera descartado");
+
+					mapaVendedores.get(vendedor).remove(0); // Borramos el lote del vendedor
+					step = 0;
+					break;
+				}
+				
+				ACLMessage respuesta = myAgent.receive(template);
+				
+				if (respuesta != null) {
+					// Hemos recibido una puja
+					if (mapaCompradores.get(respuesta.getSender()) >= lote.getPrecioActual()) {
+						// El comprador tiene dinero suficiente para pagar la puja
+						getLogger().info("ProtocoloSubasta - Initiator", "GANADOR DE LA SUBASTA: " + respuesta.getSender().getLocalName()
+								+ " se lleva " + lote.getKg() + " Kg de " + lote.getTipo() + " por " + lote.getPrecioActual() + "e");
+
+						// PUJA CORRECTA - RESPONDER CON UN INFORM Y ACTUALIZAR LA BBDD - LA PUJA HA ACABADO, VOLVER AL PASO 0
+						ACLMessage mensaje = respuesta.createReply();
+						mensaje.setPerformative(ACLMessage.INFORM);
+						mensaje.addReceiver(respuesta.getSender());
+						try {
+							mensaje.setContentObject(lote);
+						} catch (IOException e) {
+							e.printStackTrace();
+						}
+						myAgent.send(mensaje);
+
+						mapaVendedores.get(vendedor).remove(0); // Borramos el lote del vendedor
+
+						mapaCompradores.put(respuesta.getSender(), mapaCompradores.get(respuesta.getSender()) - lote.getPrecioActual()); // Actualizamos el dinero del comprador
+						
+						ingresos_lonja += lote.getPrecioActual(); // Actualizamos nuestros ingresos
+						
+						// TODO protocolo para pagar al vendedor
+						
+						step = 0;
+						
+						break;
+						
+					} else {
+						// Puja incorrecta, el comprador no tiene suficiente dinero
+						ACLMessage mensaje = respuesta.createReply();
+						mensaje.setPerformative(ACLMessage.REFUSE);
+						mensaje.addReceiver(respuesta.getSender());
+						try {
+							mensaje.setContentObject(lote);
+						} catch (IOException e) {
+							e.printStackTrace();
+						}
+						myAgent.send(mensaje);
+						getLogger().info("ProtocoloSubasta - Initiator", "El Comprador \"" + respuesta.getSender().getLocalName() + "\" ha intentado pujar por " + lote.getPrecioActual() + ", pero no tiene suficiente dinero");
+					}
+				} else {
+					// O no hemos recibido nada, o lo que hemos recibido no entra en la plantilla (por ejemplo, un reject)
+					
+					if (System.currentTimeMillis() - tiempoInicioPropuesta >= tiempo) {
+						// Ha pasado el tiempo de Ventana de Oportunidad, hay que bajar el precio de la puja
+						float nuevoPrecio = lote.getPrecioActual() - DECREMENTO_DE_PRECIO;
+						if (nuevoPrecio < lote.getPrecioReserva()) {
+							getLogger().info("ProtocoloSubasta - Initiator", "SUBASTA TERMINADA - El precio de la puja ha bajado del precio de reserva, se descarta el lote");
+
+							// Se ha bajado del precio de reserva, no se puede vender el lote
+							lote.setPrecioActual(lote.getPrecioReserva());
+							
+							// PUJA TERMINADA - ACTUALIZAR BDD Y VOLVER AL PASO 0
+							mapaVendedores.get(vendedor).remove(0); // Borramos el lote del vendedor
+							step = 0;
+							break;
+							
+						} else {
+							getLogger().info("ProtocoloSubasta - Initiator", "Bajamos el precio de la puja a: " + nuevoPrecio);
+							lote.setPrecioActual(nuevoPrecio);
+							step = 1;
+						}
+					} else {
+						block(VENTANA_DE_OPORTUNIDAD / 3); // Lo bloqueamos un tercio del tiempo de la ventana de oportunidad
+					}
+				}
+				
+			}
+						
+		}
+
 		
 	}
 }

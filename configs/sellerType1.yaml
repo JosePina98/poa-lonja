@@ -2,5 +2,11 @@
 lotes:
   - kg: 10.0
     tipo: "sardina"
+    precioReserva: 100.0
+    precioSalida: 200.0
+    precioActual: 200.0
   - kg: 6.0
-   	tipo: "boqueron"
+    tipo: "boqueron"
+    precioReserva: 10.0
+    precioSalida: 20.0
+    precioActual: 20.0

@@ -3,13 +3,17 @@ package es.um.poa.agents.buyer;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
+import java.util.Random;
 
 import org.yaml.snakeyaml.Yaml;
 
 import es.um.poa.agents.POAAgent;
+import es.um.poa.agents.seller.Lote;
 import es.um.poa.utils.ConversationID;
 import jade.core.AID;
 import jade.core.Agent;
+import jade.core.behaviours.Behaviour;
+import jade.core.behaviours.OneShotBehaviour;
 import jade.core.behaviours.SequentialBehaviour;
 import jade.domain.DFService;
 import jade.domain.FIPAException;
@@ -17,7 +21,10 @@ import jade.domain.FIPANames;
 import jade.domain.FIPAAgentManagement.DFAgentDescription;
 import jade.domain.FIPAAgentManagement.ServiceDescription;
 import jade.lang.acl.ACLMessage;
+import jade.lang.acl.MessageTemplate;
+import jade.lang.acl.UnreadableException;
 import jade.proto.AchieveREInitiator;
+import jade.proto.SubscriptionInitiator;
 
 public class BuyerAgent extends POAAgent {
 		
@@ -25,6 +32,7 @@ public class BuyerAgent extends POAAgent {
 	
 	private float presupuesto;
 	//private HashMap<String, Float> lotesComprados;
+	private static final double PROBABILIDAD_PUJAR = 0.9;
 	
 	private AID lonja;
 	
@@ -82,6 +90,8 @@ public class BuyerAgent extends POAAgent {
 				credito.setConversationId(ConversationID.APERTURA_CREDITO);
 				credito.setContent(Float.toString(presupuesto));
 				sb.addSubBehaviour(new ProtocoloAperturaCreditoInitiator(this, credito));
+				
+				sb.addSubBehaviour(new ProtocoloSubastaResponder());
 				
 				addBehaviour(sb);
 
@@ -220,4 +230,137 @@ public class BuyerAgent extends POAAgent {
 		}
 		
 	}
+	
+	@SuppressWarnings("serial")
+	private class ProtocoloSubastaResponder extends Behaviour {
+		
+		@Override
+		public void action() {
+
+			ACLMessage recibido = myAgent.receive();
+			
+			Lote lote = null;
+
+			if (recibido != null) {	
+				
+				//Si recibimos un PROPOSE
+				if (recibido.getPerformative() == ACLMessage.PROPOSE) {
+					try {
+						lote = (Lote) recibido.getContentObject();
+					} catch (UnreadableException e) {
+						e.printStackTrace();
+					}
+					
+					if (lote != null) {
+						getLogger().info("Nueva Subasta", "Nueva subasta recibida de \"" + recibido.getSender().getLocalName() + "\" de: " + lote.getTipo() + " - " + lote.getKg());
+
+						if (Math.random() <= PROBABILIDAD_PUJAR) {
+							ACLMessage accept = recibido.createReply();
+							accept.setPerformative(ACLMessage.ACCEPT_PROPOSAL);
+							accept.setConversationId(ConversationID.PUJAR);
+							myAgent.send(accept);
+							getLogger().info("Nueva Subasta", "SI PUJAMOS por: " + lote.getPrecioActual());
+						} else {
+							ACLMessage reject = recibido.createReply();
+							reject.setPerformative(ACLMessage.REJECT_PROPOSAL);
+							reject.setConversationId(ConversationID.PUJAR);
+							myAgent.send(reject);
+							getLogger().info("Nueva Subasta", "NO pujamos por: " + lote.getPrecioActual());
+						}
+					}
+					
+				} else if (recibido.getPerformative() == ACLMessage.INFORM) { // Hemos ganado la puja
+					try {
+						lote = (Lote) recibido.getContentObject();
+					} catch (UnreadableException e) {
+						e.printStackTrace();
+					}
+					
+					if (lote != null) {
+						getLogger().info("GANADOR", "Hemos ganado la subasta de \"" + recibido.getSender().getLocalName() + "\" de: " + lote.getTipo() + " - " + lote.getKg() + " por: " + lote.getPrecioActual() + "e");
+
+						presupuesto -= lote.getPrecioActual();
+					}
+				} else if (recibido.getPerformative() == ACLMessage.REFUSE) { // Hemos pujado por mas dinero del que tenemos
+					try {
+						lote = (Lote) recibido.getContentObject();
+					} catch (UnreadableException e) {
+						e.printStackTrace();
+					}
+					
+					if (lote != null) {
+						getLogger().info("TRAMPOSO", "No podemos pujar " + lote.getPrecioActual() + " si solo tenemos + " + presupuesto);
+					}
+				} else {
+					block();
+				}
+				
+			} else {
+				block();
+			}
+		}
+
+		@Override
+		public boolean done() {
+			return presupuesto <= 0;
+		}
+		
+	}
+	/*
+	@SuppressWarnings("serial")
+
+		public ProtocoloSubscripcionInitiator(Agent a, ACLMessage msg) {
+			super(a, msg);
+		}
+		
+		@Override
+		protected void handleInform(ACLMessage inform) {
+			// Por aqui nos avisa de que hay una nueva subasta
+			Lote lote = null;
+			try {
+				lote = (Lote) inform.getContentObject();
+			} catch (UnreadableException e) {
+				e.printStackTrace();
+			}
+			if (lote != null) {
+				getLogger().info("Nueva Subasta", "Nueva subasta recibida de \"" + inform.getSender().getLocalName() + "\"");
+				
+				
+				if (Math.random() >= PROBABILIDAD_PUJAR) {
+					
+					addBehaviour(new OneShotBehaviour() {
+						
+						@Override
+						public void action() {
+							ACLMessage request = new ACLMessage(ACLMessage.REQUEST);
+							request.addReceiver(lonja);
+							request.setConversationId(ConversationID.PUJAR);
+							request.setProtocol(FIPANames.InteractionProtocol.FIPA_ITERATED_CONTRACT_NET);
+							request.setContent(lote.getTipo());
+						}
+					});
+				}
+				
+			}
+		}
+		
+		@Override
+		protected void handleAgree(ACLMessage agree) {
+			super.handleAgree(agree);
+			getLogger().info("ProtocoloSubscripcion - Initiator", "AGREE recibido de \"" + agree.getSender().getLocalName() + "\", subscripcion aceptada");
+		}
+		
+		@Override
+		protected void handleRefuse(ACLMessage refuse) {
+			super.handleRefuse(refuse);
+			getLogger().info("ProtocoloSubscripcion - Initiator", "REFUSE recibido de \"" + refuse.getSender().getLocalName() + "\", subscripcion denegada");
+		}
+		
+		@Override
+		protected void handleFailure(ACLMessage failure) {
+			super.handleFailure(failure);
+			getLogger().info("ProtocoloSubscripcion - Initiator", "FAILURE recibido de \"" + failure.getSender().getLocalName() + "\", subscripcion denegada");
+		}
+	}
+	*/
 }
