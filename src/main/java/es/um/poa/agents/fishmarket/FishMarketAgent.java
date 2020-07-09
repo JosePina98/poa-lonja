@@ -16,7 +16,6 @@ import es.um.poa.utils.ConversationID;
 import jade.core.AID;
 import jade.core.Agent;
 import jade.core.behaviours.CyclicBehaviour;
-import jade.core.behaviours.TickerBehaviour;
 import jade.domain.DFService;
 import jade.domain.FIPAException;
 import jade.domain.FIPANames;
@@ -28,14 +27,13 @@ import jade.domain.FIPAAgentManagement.ServiceDescription;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
 import jade.proto.AchieveREResponder;
-import jade.proto.ProposeInitiator;
 
 public class FishMarketAgent extends POAAgent{
 	
 	private static final long serialVersionUID = 1L;
 	private static final int LATENCIA = 5000;
 	private static final int VENTANA_DE_OPORTUNIDAD = 1000;
-	private static final float DECREMENTO_DE_PRECIO = 20.0F;
+	private static final float DECREMENTO_DE_PRECIO = 10.0F;
 	private static final double TIEMPO_MAXIMO_SUBASTA = 60000;
 	
 	private HashMap<AID, Float> mapaCompradores;
@@ -322,7 +320,7 @@ public class FishMarketAgent extends POAAgent{
 					
 					aux.add(lote);
 					
-					//TODO Iniciar linea de venta
+					// Iniciamos la busqueda para abrir subastas
 					activado = true;
 
 					respuesta.setPerformative(ACLMessage.INFORM);
@@ -347,6 +345,7 @@ public class FishMarketAgent extends POAAgent{
 		private int step = 0;
 		private long tiempoInicioPropuesta;
 		private MessageTemplate template;
+		private boolean nuevaSubasta = true;
 		
 		@Override
 		public void action() {
@@ -355,7 +354,7 @@ public class FishMarketAgent extends POAAgent{
 			switch (step) {
 			case 0: // No hay ninguna puja en marcha
 				
-				getLogger().info("ProtocoloSubasta - Initiator", "Viendo si se puede iniciar una nueva subasta en la linea de venta");
+				getLogger().info("ProtocoloSubasta - Initiator", "La Lonja esta comprobando si se puede iniciar una nueva subasta en la linea de venta");
 
 				
 				// Inicializamos todas las variables
@@ -388,6 +387,7 @@ public class FishMarketAgent extends POAAgent{
 				
 				if (listaPosiblesCompradores.size() > 0) {
 					step = 1; // Podemos arrancar una puja
+					nuevaSubasta = true;
 				} else {
 					try {
 						Thread.sleep(LATENCIA); // Ahora mismo no podemos arrancar ninguna puja, nos esperamos 4 segundos
@@ -395,14 +395,21 @@ public class FishMarketAgent extends POAAgent{
 						e.printStackTrace();
 					}
 				}
+				
 				break;
 				
 			case 1: // Enviamos una propuesta de precio a los posibles compradores
 				
-				getLogger().info("ProtocoloSubasta - Initiator", "NUEVA SUBASTA: " + vendedor.getLocalName() + " vende "
+				if (nuevaSubasta) {
+					getLogger().info("ProtocoloSubasta - Initiator", "Nueva subasta: " + vendedor.getLocalName() + " vende "
 							+ lote.getKg() + "Kg de " + lote.getTipo() + ". La subasta empieza en: "
 							+ lote.getPrecioSalida() + "e y el precio minimo es de " + lote.getPrecioReserva() + "e");
-
+				
+					nuevaSubasta = false;
+				} else {
+					getLogger().info("ProtocoloSubasta - Initiator", "Bajada de precio: " + vendedor.getLocalName() + " vende "
+							+ lote.getKg() + "Kg de " + lote.getTipo() + ". El precio ahora es " + lote.getPrecioActual() + "e");
+				}
 				// Enviar un mensaje PROPOSE a cada comprador que tenga linea de credito abierta con mas dinero que el precio de reserva
 				ACLMessage propose = new ACLMessage(ACLMessage.PROPOSE);
 				propose.setProtocol(FIPANames.InteractionProtocol.FIPA_PROPOSE);
@@ -454,7 +461,7 @@ public class FishMarketAgent extends POAAgent{
 						// PUJA CORRECTA - RESPONDER CON UN INFORM Y ACTUALIZAR LA BBDD - LA PUJA HA ACABADO, VOLVER AL PASO 0
 						ACLMessage mensaje = respuesta.createReply();
 						mensaje.setPerformative(ACLMessage.INFORM);
-						mensaje.addReceiver(respuesta.getSender());
+						//mensaje.addReceiver(respuesta.getSender());
 						try {
 							mensaje.setContentObject(lote);
 						} catch (IOException e) {
@@ -505,7 +512,6 @@ public class FishMarketAgent extends POAAgent{
 							break;
 							
 						} else {
-							getLogger().info("ProtocoloSubasta - Initiator", "Bajamos el precio de la puja a: " + nuevoPrecio);
 							lote.setPrecioActual(nuevoPrecio);
 							step = 1;
 						}

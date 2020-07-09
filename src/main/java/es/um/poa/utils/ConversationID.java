@@ -9,5 +9,6 @@ public class ConversationID {
 	public static final String SUBSCRIPCION = "Subscripcion";
 	public static final String PUJAR = "Pujar";
 	public static final String SUBASTA = "Subasta";
+	public static final String RETIRADA_COMPRAS = "RetiradaCompras";
 
 }
