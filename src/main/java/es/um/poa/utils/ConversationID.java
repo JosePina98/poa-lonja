@@ -10,5 +10,7 @@ public class ConversationID {
 	public static final String PUJAR = "Pujar";
 	public static final String SUBASTA = "Subasta";
 	public static final String RETIRADA_COMPRAS = "RetiradaCompras";
+	public static final String TERMINACION_COMPRADOR = "TerminacionComprador";
+	public static final String COBRO_VENDEDOR = "Cobro";
 
 }

@@ -18,17 +18,23 @@ import jade.domain.DFService;
 import jade.domain.FIPAException;
 import jade.domain.FIPANames;
 import jade.domain.FIPAAgentManagement.DFAgentDescription;
+import jade.domain.FIPAAgentManagement.FailureException;
+import jade.domain.FIPAAgentManagement.NotUnderstoodException;
+import jade.domain.FIPAAgentManagement.RefuseException;
 import jade.domain.FIPAAgentManagement.ServiceDescription;
 import jade.proto.AchieveREInitiator;
+import jade.proto.AchieveREResponder;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
 
 public class SellerAgent extends POAAgent  {
 		
 	private static final long serialVersionUID = 1L;
+	private static final double PROBABILIDAD_ACEPTAR_COBRO = 0.8;
 	
 	private Stack<Lote> pilaLotes;
 	private AID lonja;
+	private float ganancias;
 
 	public void setup() {
 		super.setup();
@@ -45,6 +51,7 @@ public class SellerAgent extends POAAgent  {
 				for (Lote l : config.getLotes()) {
 					pilaLotes.push(l);
 				}
+				ganancias = 0;
 				
 				// Buscamos al Agente Lonja
 				DFAgentDescription template = new DFAgentDescription();
@@ -82,13 +89,10 @@ public class SellerAgent extends POAAgent  {
 				sb.addSubBehaviour(new ProtocoloDepositoInitiator());
 						
 				addBehaviour(sb);
-				// Añadimos el protocolo de registro del vendedor
-//				ACLMessage aux = new ACLMessage(ACLMessage.REQUEST);
-//				aux.setProtocol(FIPANames.InteractionProtocol.FIPA_REQUEST);
-//				aux.addReceiver(lonja);
-//				aux.setConversationId(ConversationID.REGISTRO_VENDEDOR);
-//				addBehaviour(new ProtocoloRegistroVendedorInitiator(this, aux));
-//				
+				
+				MessageTemplate protocolo_cobro = MessageTemplate.and(AchieveREResponder.createMessageTemplate(FIPANames.InteractionProtocol.FIPA_REQUEST),
+						MessageTemplate.MatchConversationId(ConversationID.COBRO_VENDEDOR));
+				addBehaviour(new ProtocoloCobroResponder(this, protocolo_cobro));
 			} else {
 				doDelete();
 			}
@@ -105,7 +109,7 @@ public class SellerAgent extends POAAgent  {
 			InputStream inputStream;
 			inputStream = new FileInputStream(fileName);
 			config = yaml.load(inputStream);
-			getLogger().info("initAgentFromConfigFile", config.toString());
+			getLogger().info("initAgentFromConfigFile", "Lotes: " + config.getLotes().size());
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		}
@@ -219,6 +223,69 @@ public class SellerAgent extends POAAgent  {
 					
 					break;
 				}
+			}
+		}
+		
+	}
+	
+	@SuppressWarnings("serial")
+	private class ProtocoloCobroResponder extends AchieveREResponder {
+
+		private boolean aceptado = false;
+		
+		public ProtocoloCobroResponder(Agent a, MessageTemplate mt) {
+			super(a, mt);
+		}
+		
+		/**
+		 * Metodo que prepara la respuesta a la peticion.
+		 * En caso de acceder a la peticion se obvia el AGREE
+		 * sino se manda un REFUSE.
+		 * 
+		 * @param request El mensaje recibido.
+		 */
+		@Override
+		protected ACLMessage handleRequest(ACLMessage request) throws NotUnderstoodException, RefuseException {
+	
+			// Comprobamos si podemos llevar a cabo la peticion.
+			if (Math.random() < PROBABILIDAD_ACEPTAR_COBRO) {
+				aceptado = true;
+				return null;
+			}
+			else {
+				// Rechazamos a llevar a cabo la peticion.
+				getLogger().info("ProtocoloCobro - Responder", "Rechazamos el cobro de " + request.getContent() + "e de la Lonja");
+				throw new RefuseException("check-failed");
+			}
+		}
+		
+		/**
+		 * Metodo que lleva a cabo la peticion propuesta
+		 * y se envia un INFORM.
+		 * 
+		 *  @param request  El mensaje recibido.
+		 *  @param response La respuesta para el agente que ha realizado la peticion.
+		 */
+		@Override
+		protected ACLMessage prepareResultNotification(ACLMessage request, ACLMessage response) throws FailureException {
+			
+			if (aceptado) {				
+				try {
+					float cobro = Float.parseFloat(request.getContent());
+					ganancias += cobro;
+					getLogger().info("ProtocoloCobro - Responder", "El vendedor \"" + myAgent.getLocalName() + "\" acepta el cobro de " + request.getContent() +
+							"e de la Lonja. Sus ganancias son de: " + ganancias + "e");
+					
+					ACLMessage respuesta = request.createReply();
+					respuesta.setPerformative(ACLMessage.INFORM);
+					return respuesta;
+				} catch (Exception e) {
+					throw new FailureException("El contenido del mensaje no es correcto");
+				}
+			} else {
+				ACLMessage respuesta = request.createReply();
+				respuesta.setPerformative(ACLMessage.REFUSE);
+				return respuesta;
 			}
 		}
 		

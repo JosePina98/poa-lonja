@@ -1,7 +1,10 @@
 package es.um.poa.agents.buyer;
 
+import java.util.List;
+
 public class BuyerAgentConfig {
 	private float presupuesto;
+	private List<String> listaCompra;
 	
 	@Override
 	public String toString() {
@@ -14,5 +17,13 @@ public class BuyerAgentConfig {
 
 	public void setPresupuesto(float presupuesto) {
 		this.presupuesto = presupuesto;
+	}
+
+	public List<String> getListaCompra() {
+		return listaCompra;
+	}
+	
+	public void setListaCompra(List<String> listaCompra) {
+		this.listaCompra = listaCompra;
 	}
 }

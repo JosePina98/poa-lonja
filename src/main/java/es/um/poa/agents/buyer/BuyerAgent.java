@@ -29,11 +29,9 @@ public class BuyerAgent extends POAAgent {
 	private static final long serialVersionUID = 1L;
 	
 	private float presupuesto;
+	private List<String> listaCompra;
 	private List<Lote> lotesComprados;
-	private static final double PROBABILIDAD_PUJAR = 0.95;
-	private static final double PROBABILIDAD_RETIRADA_COMPRAS = 0.4;
-	private static ACLMessage mensajeRetiradaCompras;
-	
+	private static final double PROBABILIDAD_PUJAR = 0.4;
 	
 	private AID lonja;
 	
@@ -51,11 +49,8 @@ public class BuyerAgent extends POAAgent {
 				
 				lotesComprados = new LinkedList<>();
 				presupuesto = config.getPresupuesto();
-				mensajeRetiradaCompras = new ACLMessage(ACLMessage.REQUEST);
-				mensajeRetiradaCompras.setProtocol(FIPANames.InteractionProtocol.FIPA_REQUEST);
-				mensajeRetiradaCompras.addReceiver(lonja);
-				mensajeRetiradaCompras.setConversationId(ConversationID.RETIRADA_COMPRAS);
-				
+				listaCompra = config.getListaCompra();
+
 				// Buscamos al Agente Lonja
 				DFAgentDescription template = new DFAgentDescription();
 				ServiceDescription sd = new ServiceDescription();
@@ -77,7 +72,7 @@ public class BuyerAgent extends POAAgent {
 				} catch (FIPAException f) {
 					f.printStackTrace();
 				}
-				
+
 				// Creo un comportamiento secuencial para que se ejecute un protocolo despues del otro
 				SequentialBehaviour sb = new SequentialBehaviour();
 				
@@ -111,19 +106,11 @@ public class BuyerAgent extends POAAgent {
 	
 	@Override
 	public void takeDown() {
+
 		// Printout a dismissal message
-		System.out.println("Buyer-agent " + getAID().getName() + " terminating.");
-		getLogger().info("", "Buyer-agent " + getAID().getName() + " terminating.");
+		System.out.println("Comprador \"" + getAID().getLocalName() + "\" finalizando");
+		getLogger().info("INFO", "Comprador \"" + getAID().getLocalName() + "\" finalizando");
 		super.takeDown();
-	}
-
-	
-	@Override
-	public void doDelete() {
-		this.addBehaviour(new ProtocoloRetiradaComprasInitiator(this, mensajeRetiradaCompras));
-
-		getLogger().info("INFO", "Comprador: \"" + this.getName() + "\" acabando");
-		super.doDelete();
 	}
 	
 	private BuyerAgentConfig initAgentFromConfigFile(String fileName) {
@@ -263,7 +250,8 @@ public class BuyerAgent extends POAAgent {
 			
 			Lote lote = null;
 
-			if (recibido != null) {	
+			if (recibido != null && 
+					(recibido.getConversationId().equals(ConversationID.SUBASTA) || recibido.getConversationId().equals(ConversationID.PUJAR))) {	
 				
 				//Si recibimos un PROPOSE
 				if (recibido.getPerformative() == ACLMessage.PROPOSE) {
@@ -274,22 +262,23 @@ public class BuyerAgent extends POAAgent {
 					}
 					
 					if (lote != null) {
-						getLogger().info("ProtocoloSubasta - Responder", "Nueva oferta de subasta recibida de \"" + recibido.getSender().getLocalName() + "\": " 
-								+ lote.getKg() + "kg de " + lote.getTipo() + " por " + lote.getPrecioActual() + "e");
+						String mensajeLog = "";
 
-						if (Math.random() <= PROBABILIDAD_PUJAR) {
+						if (listaCompra.contains(lote.getTipo()) && Math.random() < PROBABILIDAD_PUJAR) {
 							ACLMessage accept = recibido.createReply();
 							accept.setPerformative(ACLMessage.ACCEPT_PROPOSAL);
 							accept.setConversationId(ConversationID.PUJAR);
 							myAgent.send(accept);
-							getLogger().info("ProtocoloSubasta - Responder", "SI pujamos por: " + lote.getPrecioActual() + "e");
+							mensajeLog += "SI pujamos por: ";
 						} else {
 							ACLMessage reject = recibido.createReply();
 							reject.setPerformative(ACLMessage.REJECT_PROPOSAL);
 							reject.setConversationId(ConversationID.PUJAR);
 							myAgent.send(reject);
-							getLogger().info("ProtocoloSubasta - Responder", "NO pujamos por: " + lote.getPrecioActual() + "e");
+							mensajeLog += "NO pujamos por: ";
 						}
+						mensajeLog += "Oferta de subasta recibida: " + lote.getKg() + "kg de " + lote.getTipo() + " por " + lote.getPrecioActual() + "e";
+						getLogger().info("ProtocoloSubasta - Responder", mensajeLog);
 					}
 					
 				} else {
@@ -303,7 +292,27 @@ public class BuyerAgent extends POAAgent {
 						if (lote != null) {
 							getLogger().info("ProtocoloSubasta - Responder", "Hemos ganado la subasta de: " 
 									+ lote.getKg() + "kg de " + lote.getTipo() + " por " + lote.getPrecioActual() + "e");
+							
+							listaCompra.remove(lote.getTipo());
+								
+							// Actualizamos nuestro presupuesto y añadimos el lote a la lista de lotes comprados
+							// Esto es el equivalente al protocolo_retirada_compras
+							presupuesto -= lote.getPrecioActual();
+							lotesComprados.add(lote);
+							getLogger().info("ProtocoloRetirada", "Se ha retirado correctamente el lote de: " + 
+									lote.getKg() + "kg de " + lote.getTipo() + ". El presupuesto restante es " + presupuesto);
+							
+							if (listaCompra.isEmpty()) {
+								getLogger().info("INFO", "El Comprador \"" + getAID().getLocalName() + "\" ha completado su lista de la compra");
+
+								ACLMessage aux = new ACLMessage(ACLMessage.REQUEST);
+								aux.setProtocol(FIPANames.InteractionProtocol.FIPA_REQUEST);
+								aux.addReceiver(lonja);
+								aux.setConversationId(ConversationID.TERMINACION_COMPRADOR);
+								addBehaviour(new ProtocoloTerminacionInitiator(myAgent, aux));
+							}
 						}
+						
 						
 					} else if (recibido.getPerformative() == ACLMessage.REFUSE) { // Hemos pujado por mas dinero del que tenemos
 						try {
@@ -319,10 +328,6 @@ public class BuyerAgent extends POAAgent {
 					} else {
 						block();
 					}
-					
-					if (Math.random() > PROBABILIDAD_RETIRADA_COMPRAS) {
-						myAgent.addBehaviour(new ProtocoloRetiradaComprasInitiator(myAgent, mensajeRetiradaCompras));
-					}
 				}
 			} else {
 				block();
@@ -336,42 +341,95 @@ public class BuyerAgent extends POAAgent {
 		
 	}
 	
+//	private class ProtocoloRetiradaComprasInitiator extends AchieveREInitiator {
+//
+//		private static final long serialVersionUID = 1L;
+//		
+//		public ProtocoloRetiradaComprasInitiator(Agent a, ACLMessage msg) {
+//			super(a, msg);
+//		}
+//		
+//		/**
+//		 * Este metodo es ejecutado justo antes del comienzo de la ejecucion 
+//		 * del comportamiento. Lo uso para imprimir mensajes de log.
+//		 */
+//		@Override
+//		public void onStart() {
+//			super.onStart();
+//			getLogger().info("ProtocoloRetirada - Initiator", "ProtocoloRetirada iniciado");
+//		}
+//		
+//		@SuppressWarnings("unchecked")
+//		@Override
+//		protected void handleInform(ACLMessage inform) {
+//			
+//			List<Lote> listaLotes = null;
+//			try {
+//				listaLotes = (List<Lote>) inform.getContentObject();
+//			} catch (UnreadableException e) {
+//				e.printStackTrace();
+//			}
+//			
+//			if (listaLotes != null) {
+//				for (Lote lote : listaLotes) {
+//					presupuesto -= lote.getPrecioActual();
+//					lotesComprados.add(lote);
+//					
+//					getLogger().info("ProtocoloRetirada - Initiator", "Se ha retirado correctamente el lote de: " + 
+//							lote.getKg() + "kg de " + lote.getTipo() + ". El presupuesto restante es " + presupuesto);
+//				}
+//				
+//				myAgent.doDelete();
+//			} else {
+//				getLogger().info("ProtocoloRetirada - Initiator", "No se ha podido retirar ningun lote");
+//			}
+//		}
+//		
+//		/**
+//		 * Maneja los mensajes failure recibidos.
+//		 * Se llama al padre y se añaden ordenes para la depuracion.
+//		 */
+//		@Override
+//		protected void handleFailure(ACLMessage msg) {
+//			getLogger().info("ProtocoloRetirada - Initiator", "FAILURE recibido de \"" + msg.getSender().getLocalName() + "\", no queda ningun lote por retirar");
+//			super.handleFailure(msg);
+//		}
+//		/**
+//		 * Maneja los mensajes refuse recibidos.
+//		 * Se llama al padre y se añaden ordenes para la depuracion.
+//		 */
+//		@Override
+//		protected void handleRefuse(ACLMessage msg) {
+//			getLogger().info("ProtocoloRetirada - Initiator", "REFUSE recibido de \"" + msg.getSender().getLocalName() + "\", no se ha podido retirar ningun lote");
+//			super.handleRefuse(msg);
+//		}
+//	}
+	
 	@SuppressWarnings("serial")
-	private class ProtocoloRetiradaComprasInitiator extends AchieveREInitiator {
+	private class ProtocoloTerminacionInitiator extends AchieveREInitiator {
 
-		public ProtocoloRetiradaComprasInitiator(Agent a, ACLMessage msg) {
+		public ProtocoloTerminacionInitiator(Agent a, ACLMessage msg) {
 			super(a, msg);
 		}
 		
+		/**
+		 * Este metodo es ejecutado justo antes del comienzo de la ejecucion 
+		 * del comportamiento. Lo uso para imprimir mensajes de log.
+		 */
 		@Override
-		protected void handleInform(ACLMessage inform) {
-
-			Lote lote = null;
-			try {
-				lote = (Lote) inform.getContentObject();
-			} catch (UnreadableException e) {
-				e.printStackTrace();
-			}
-			
-			if (lote != null) {
-				presupuesto -= lote.getPrecioActual();
-				lotesComprados.add(lote);
-				getLogger().info("ProtocoloRetirada - Initiator", "Se han retirado correctamente el lote de : " + 
-						lote.getKg() + "kg de " + lote.getTipo());
-				
-				if (presupuesto == 0) {
-					myAgent.doDelete();
-				}
-			} else {
-				getLogger().info("ProtocoloRetirada - Initiator", "No se h apodido retirar ningun lote");
-			}
+		public void onStart() {
+			super.onStart();
+			getLogger().info("ProtocoloTerminacion - Initiator", "ProtocoloTerminacion iniciado");
 		}
 		
+		/**
+		 * Maneja los mensajes inform recibidos.
+		 * Se llama al padre y se añaden ordenes para la depuracion.
+		 */
 		@Override
-		protected void handleRefuse(ACLMessage refuse) {
-			getLogger().info("ProtocoloRetirada - Initiator", "No se h apodido retirar ningun lote");
+		protected void handleInform(ACLMessage msg) {
+			super.handleInform(msg);
+			myAgent.doDelete();
 		}
-	
-		
 	}
 }

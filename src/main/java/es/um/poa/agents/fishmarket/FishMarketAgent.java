@@ -5,6 +5,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -26,6 +27,7 @@ import jade.domain.FIPAAgentManagement.RefuseException;
 import jade.domain.FIPAAgentManagement.ServiceDescription;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
+import jade.proto.AchieveREInitiator;
 import jade.proto.AchieveREResponder;
 
 public class FishMarketAgent extends POAAgent{
@@ -36,11 +38,14 @@ public class FishMarketAgent extends POAAgent{
 	private static final float DECREMENTO_DE_PRECIO = 10.0F;
 	private static final double TIEMPO_MAXIMO_SUBASTA = 60000;
 	
-	private HashMap<AID, Float> mapaCompradores;
-	private HashMap<AID, List<Lote>> mapaVendedores;
+	private HashMap<AID, Float> mapaCompradores; // Contiene el dinero de cada comprador
+	private HashMap<AID, List<Lote>> mapaLotesCompradores; // Contiene los lotes que cada comprador ha comprado
+	private HashMap<AID, List<Lote>> mapaVendedores; // Contiene los lotes que cada vendedor ha depositado pero no ha vendido
+	private HashMap<AID, Float> mapaDineroVendedores; // Contiene el dinero de los lotes que cada vendedor ha vendido pero aun no ha cobrado
 	private int tiempo = LATENCIA;
 	private float ingresos_lonja = 0;
 	private boolean activado = false;
+	private long tiempoLatencia;
 		
 	public void setup() {
 		super.setup();
@@ -54,6 +59,8 @@ public class FishMarketAgent extends POAAgent{
 								
 				mapaCompradores = new HashMap<>();
 				mapaVendedores = new HashMap<>();
+				mapaLotesCompradores = new HashMap<>();
+				mapaDineroVendedores = new HashMap<>();
 
 				// Crear los comportamientos correspondientes
 				
@@ -89,7 +96,13 @@ public class FishMarketAgent extends POAAgent{
 				addBehaviour(new ProtocoloDepositoResponder());
 				this.getLogger().info("INFO", "ProtocoloDeposito anadido con exito");
 				
+				MessageTemplate protocolo_terminacion_comprador = MessageTemplate.and(AchieveREResponder.createMessageTemplate(FIPANames.InteractionProtocol.FIPA_REQUEST),
+						MessageTemplate.MatchConversationId(ConversationID.TERMINACION_COMPRADOR));
+				addBehaviour(new ProtocoloTerminacionResponder(this, protocolo_terminacion_comprador));
+				this.getLogger().info("INFO", "ProtocoloTerminacion anadido con exito");
+
 				addBehaviour(new ProtocoloSubastaInitiator());
+				this.getLogger().info("INFO", "ProtocoloSubasta anadido con exito");
 				
 			} else {
 				doDelete();
@@ -155,8 +168,9 @@ public class FishMarketAgent extends POAAgent{
 		protected ACLMessage prepareResultNotification(ACLMessage request, ACLMessage response) throws FailureException {
 			
 			// Llevamos a cabo la peticion.
-			if (mapaCompradores.put(request.getSender(), 0F) == null) 
-			{			
+			if (mapaCompradores.put(request.getSender(), 0F) == null &&
+					mapaLotesCompradores.put(request.getSender(), new LinkedList<>()) == null) 
+			{
 				// La peticion se ha realizado con exito.
 				getLogger().info("ProtocoloAdmisionComprador - Responder", "Registro del Comprador \"" + request.getSender().getLocalName() + "\" aceptado");
 
@@ -214,7 +228,8 @@ public class FishMarketAgent extends POAAgent{
 		protected ACLMessage prepareResultNotification(ACLMessage request, ACLMessage response) throws FailureException {
 			
 			// Llevamos a cabo la peticion.
-			if (mapaVendedores.put(request.getSender(), new LinkedList<Lote>()) == null) 
+			if (mapaVendedores.put(request.getSender(), new LinkedList<Lote>()) == null
+					&& mapaDineroVendedores.put(request.getSender(), 0F) == null) 
 			{			
 				// La peticion se ha realizado con exito.
 				getLogger().info("ProtocoloRegistroVendedor - Responder", "Registro del Vendedor \"" + request.getSender().getLocalName() + "\" aceptado");
@@ -251,7 +266,7 @@ public class FishMarketAgent extends POAAgent{
 	
 			getLogger().info("ProtocoloAperturaCredito - Responder", "Mensaje REQUEST para abrir una linea de credito recibido de \"" + request.getSender().getLocalName() + "\"");
 			// Comprobamos si podemos llevar a cabo la peticion.
-			if (mapaCompradores.containsKey(request.getSender())) {
+			if (mapaCompradores.containsKey(request.getSender()) && mapaCompradores.get(request.getSender()) == 0) {
 	
 				return null;
 			}
@@ -322,6 +337,7 @@ public class FishMarketAgent extends POAAgent{
 					
 					// Iniciamos la busqueda para abrir subastas
 					activado = true;
+					tiempoLatencia = System.currentTimeMillis() + LATENCIA;
 
 					respuesta.setPerformative(ACLMessage.INFORM);
 				} else {
@@ -349,12 +365,12 @@ public class FishMarketAgent extends POAAgent{
 		
 		@Override
 		public void action() {
-			if (!activado) return;
+			if (!activado || System.currentTimeMillis() < tiempoLatencia) return;
 			
 			switch (step) {
 			case 0: // No hay ninguna puja en marcha
 				
-				getLogger().info("ProtocoloSubasta - Initiator", "La Lonja esta comprobando si se puede iniciar una nueva subasta en la linea de venta");
+				getLogger().info("ProtocoloSubasta - Initiator", "La Lonja esta comprobando si se puede iniciar una nueva subasta. Ganancias hasta ahora: " + ingresos_lonja + "e");
 
 				
 				// Inicializamos todas las variables
@@ -389,11 +405,8 @@ public class FishMarketAgent extends POAAgent{
 					step = 1; // Podemos arrancar una puja
 					nuevaSubasta = true;
 				} else {
-					try {
-						Thread.sleep(LATENCIA); // Ahora mismo no podemos arrancar ninguna puja, nos esperamos 4 segundos
-					} catch (InterruptedException e) {
-						e.printStackTrace();
-					}
+					tiempoLatencia = System.currentTimeMillis() + LATENCIA;
+					break;
 				}
 				
 				break;
@@ -401,7 +414,7 @@ public class FishMarketAgent extends POAAgent{
 			case 1: // Enviamos una propuesta de precio a los posibles compradores
 				
 				if (nuevaSubasta) {
-					getLogger().info("ProtocoloSubasta - Initiator", "Nueva subasta: " + vendedor.getLocalName() + " vende "
+					getLogger().info("ProtocoloSubasta - Initiator", "NUEVA SUBASTA: " + vendedor.getLocalName() + " vende "
 							+ lote.getKg() + "Kg de " + lote.getTipo() + ". La subasta empieza en: "
 							+ lote.getPrecioSalida() + "e y el precio minimo es de " + lote.getPrecioReserva() + "e");
 				
@@ -420,11 +433,28 @@ public class FishMarketAgent extends POAAgent{
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
+				// Actualizamos la lista de posibles compradores por si alguno se ha dado de baja
+				listaPosiblesCompradores.clear();
+				for (AID aid : mapaCompradores.keySet()) {
+					if (mapaCompradores.get(aid) > lote.getPrecioReserva()) {
+						listaPosiblesCompradores.add(aid);
+					}
+				}
 				
+				String mensajeLog = "Enviamos un Propose a: ";
+				boolean primeraIt = true;
 				for (AID posibleComprador : listaPosiblesCompradores) {
-					getLogger().info("ProtocoloSubasta - Initiator", "PROPOSE enviado a " + posibleComprador.getLocalName() + " para ver si puja por " + lote.getPrecioActual() + "e");
+					if (primeraIt) {
+						mensajeLog += posibleComprador.getLocalName();
+						primeraIt = false;
+					} else {
+						mensajeLog += ", " + posibleComprador.getLocalName();
+					}
+
 					propose.addReceiver(posibleComprador);
 				}
+				mensajeLog += " para ver si pujan por " + lote.getPrecioActual() + "e";
+				getLogger().info("ProtocoloSubasta - Initiator", mensajeLog);
 				myAgent.send(propose);
 				
 				MessageTemplate template1 = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.ACCEPT_PROPOSAL), 
@@ -461,7 +491,6 @@ public class FishMarketAgent extends POAAgent{
 						// PUJA CORRECTA - RESPONDER CON UN INFORM Y ACTUALIZAR LA BBDD - LA PUJA HA ACABADO, VOLVER AL PASO 0
 						ACLMessage mensaje = respuesta.createReply();
 						mensaje.setPerformative(ACLMessage.INFORM);
-						//mensaje.addReceiver(respuesta.getSender());
 						try {
 							mensaje.setContentObject(lote);
 						} catch (IOException e) {
@@ -471,11 +500,20 @@ public class FishMarketAgent extends POAAgent{
 
 						mapaVendedores.get(vendedor).remove(0); // Borramos el lote del vendedor
 
+						// Esto es el equivalente al protocolo_retirada_compras
 						mapaCompradores.put(respuesta.getSender(), mapaCompradores.get(respuesta.getSender()) - lote.getPrecioActual()); // Actualizamos el dinero del comprador
+						mapaLotesCompradores.get(respuesta.getSender()).add(lote); // Añadimos el lote comprado a su lista de lotes comprados
 						
 						ingresos_lonja += lote.getPrecioActual(); // Actualizamos nuestros ingresos
 						
-						// TODO protocolo para pagar al vendedor
+						mapaDineroVendedores.put(vendedor, mapaDineroVendedores.get(vendedor) + lote.getPrecioActual()); // Actualizamos el dinero del vendedor sin retirar
+
+						ACLMessage aux = new ACLMessage(ACLMessage.REQUEST);
+						aux.setProtocol(FIPANames.InteractionProtocol.FIPA_REQUEST);
+						aux.addReceiver(vendedor);
+						aux.setConversationId(ConversationID.COBRO_VENDEDOR);
+						aux.setContent(String.valueOf(lote.getPrecioActual()));
+						addBehaviour(new ProtocoloCobroInitiator(myAgent, aux));
 						
 						step = 0;
 						
@@ -523,7 +561,114 @@ public class FishMarketAgent extends POAAgent{
 			}
 						
 		}
+	}
+	
+	@SuppressWarnings("serial")
+	private class ProtocoloTerminacionResponder extends AchieveREResponder {
 
+		public ProtocoloTerminacionResponder(Agent a, MessageTemplate mt) {
+			super(a, mt);
+		}
+		
+		/**
+		 * Metodo que prepara la respuesta a la peticion.
+		 * En caso de acceder a la peticion se obvia el AGREE
+		 * sino se manda un REFUSE.
+		 * 
+		 * @param request El mensaje recibido.
+		 */
+		@Override
+		protected ACLMessage handleRequest(ACLMessage request) throws NotUnderstoodException, RefuseException {
+	
+			getLogger().info("ProtocoloTerminacion - Responder", "El Comprador \"" + request.getSender().getLocalName() + "\" quiere abandonar la lonja");
+			// Comprobamos si podemos llevar a cabo la peticion.
+			if (mapaCompradores.containsKey(request.getSender())) {
+	
+				return null;
+			}
+			else {
+				// Rechazamos a llevar a cabo la peticion.
+				getLogger().info("ProtocoloTerminacion - Responder", "El Comprador \"" + request.getSender().getLocalName() + "\" no esta registrado");
+				throw new RefuseException("check-failed");
+			}
+		}
+		
+		/**
+		 * Metodo que lleva a cabo la peticion propuesta
+		 * y se envia un INFORM.
+		 * 
+		 *  @param request  El mensaje recibido.
+		 *  @param response La respuesta para el agente que ha realizado la peticion.
+		 */
+		@Override
+		protected ACLMessage prepareResultNotification(ACLMessage request, ACLMessage response) throws FailureException {
+			
+			// Llevamos a cabo la peticion.
+			if (mapaCompradores.remove(request.getSender()) != null) {
+				// La peticion se ha realizado con exito.
+				getLogger().info("ProtocoloTerminacion - Responder", "Hemos dado de baja al Comprador \"" + request.getSender().getLocalName() + "\"");
+
+				// Creamos y devolvemos el INFORM.
+				ACLMessage inform = request.createReply();
+				inform.setPerformative(ACLMessage.INFORM);
+				return inform;
+			}
+			else {
+				// La peticion ha fallado, lanzamos un FAILURE
+				throw new FailureException("unexpected-error");
+			}	
+		}
 		
 	}
+	
+	@SuppressWarnings("serial")
+	private class ProtocoloCobroInitiator extends AchieveREInitiator {
+
+		public ProtocoloCobroInitiator(Agent a, ACLMessage msg) {
+			super(a, msg);
+			@SuppressWarnings("unchecked")
+			Iterator<AID> it = msg.getAllReceiver();
+			if (it.hasNext())
+				getLogger().info("ProtocoloCobro - Initiator", "Se le ofrece la posibilidad de cobrar al Vendedor \"" + it.next().getLocalName() + "\"");
+		}
+		
+		/**
+		 * Maneja los mensajes inform recibidos.
+		 * Se llama al padre y se añaden ordenes para la depuracion.
+		 */
+		@Override
+		protected void handleInform(ACLMessage msg) {
+			super.handleInform(msg);
+			getLogger().info("ProtocoloCobro - Initiator", "El Vendedor \"" + msg.getSender().getLocalName() + "\" ha aceptado el cobro");
+			mapaDineroVendedores.put(msg.getSender(), 0F);
+		}
+		/**
+		 * Maneja los mensajes failure recibidos.
+		 * Se llama al padre y se añaden ordenes para la depuracion.
+		 */
+		@Override
+		protected void handleFailure(ACLMessage msg) {
+			super.handleFailure(msg);
+			getLogger().info("ProtocoloCobro - Initiator", "El Vendedor \"" + msg.getSender().getLocalName() + "\" ha rechazado el cobro");
+		}
+		/**
+		 * Maneja los mensajes refuse recibidos.
+		 * Se llama al padre y se añaden ordenes para la depuracion.
+		 */
+		@Override
+		protected void handleRefuse(ACLMessage msg) {
+			super.handleRefuse(msg);
+			getLogger().info("ProtocoloCobro - Initiator", "REFUSE recibido de \"" + msg.getSender().getLocalName() + "\", cobro denegado");
+		}
+		/**
+		 * Maneja los mensajes notUnderstood recibidos.
+		 * Se llama al padre y se añaden ordenes para la depuracion.
+		 */
+		@Override
+		protected void handleNotUnderstood(ACLMessage msg) {
+			super.handleNotUnderstood(msg);
+			getLogger().info("ProtocoloCobro - Initiator", "NOTUNDERSTOOD recibido de \"" + msg.getSender().getLocalName() + "\"");
+		}
+	}
+	
 }
