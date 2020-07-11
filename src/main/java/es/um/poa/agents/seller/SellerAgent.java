@@ -36,8 +36,8 @@ import jade.lang.acl.MessageTemplate;
 public class SellerAgent extends POAAgent  {
 		
 	private static final long serialVersionUID = 1L;
-	private static final double PROBABILIDAD_ACEPTAR_COBRO = 0.8;
 	
+	private static final double PROBABILIDAD_ACEPTAR_COBRO = 0.8;
 	private Stack<Lote> pilaLotes;
 	private AID lonja;
 	private float ganancias;
