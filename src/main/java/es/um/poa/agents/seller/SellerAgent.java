@@ -27,6 +27,12 @@ import jade.proto.AchieveREResponder;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
 
+/**
+ * Clase que representa al Agente con el rol de Vendedor
+ * 
+ * @author Jose Antonio Pina Gomez
+ *
+ */
 public class SellerAgent extends POAAgent  {
 		
 	private static final long serialVersionUID = 1L;
@@ -36,6 +42,11 @@ public class SellerAgent extends POAAgent  {
 	private AID lonja;
 	private float ganancias;
 
+	/**
+	 * 
+	 * Funcion que sirve para incializar al agente.
+	 *
+	 */
 	public void setup() {
 		super.setup();
 		
@@ -102,6 +113,12 @@ public class SellerAgent extends POAAgent  {
 		}
 	}
 	
+	/**
+	 * Funcion que sirve para incializar al agente con los datos del fichero de configuracion.
+	 * 
+	 * @param fileName nombre del fichero de configuracion
+	 * @return devuelve un objeto SellerAgentConfig con los datos de configuracion
+	 */
 	private SellerAgentConfig initAgentFromConfigFile(String fileName) {
 		SellerAgentConfig config = null;
 		try {
@@ -116,6 +133,12 @@ public class SellerAgent extends POAAgent  {
 		return config;
 	}
 	
+	/**
+	 * Clase privada que implementa el protocolo-registro-vendedor.
+	 * 
+	 * Este protocolo se usará una vez por vendedor, al entrar por primera vez en la lonja.
+	 * 
+	 */
 	@SuppressWarnings("serial")
 	private class ProtocoloRegistroVendedorInitiator extends AchieveREInitiator {
 
@@ -172,6 +195,13 @@ public class SellerAgent extends POAAgent  {
 		
 	}
 	
+	/**
+	 * Clase privada que implementa el protocolo-deposito.
+	 * 
+	 * Este protocolo se puede usar tantas veces como sea necesario, una por cada lote
+	 * que el vendedor quiera depositar en la lonja.
+	 * 
+	 */
 	@SuppressWarnings("serial")
 	private class ProtocoloDepositoInitiator extends CyclicBehaviour {
 
@@ -228,6 +258,13 @@ public class SellerAgent extends POAAgent  {
 		
 	}
 	
+	/**
+	 * Clase privada que implementa el protocolo-cobro.
+	 * 
+	 * Recibiremos un mensaje REQUEST del agente con el rol de Gestor de Ventas ofreciendonos
+	 * cobrar los lotes que hemos vendido y el agente vendedor podrá ceptar el pago o rechazarlo de momento.
+	 * 
+	 */
 	@SuppressWarnings("serial")
 	private class ProtocoloCobroResponder extends AchieveREResponder {
 

@@ -19,6 +19,12 @@ import jade.core.Profile;
 import jade.core.ProfileImpl;
 import jade.wrapper.*;
 
+/**
+ * Clase Principal que se encarga de lanzar el escenario
+ * 
+ * @author Jose Antonio Pina Gomez
+ * 
+ */
 public class ScenarioLauncher {
 	
 	//  LOS AGENTES EN EL SNIFFER
@@ -120,8 +126,8 @@ public class ScenarioLauncher {
 	/**
 	 * Metodo para incluir el agente sniffer al contenedor principal de agentes. 
 	 * @param mc Contenedor principal de agentes.
-	 * @param agents List<String> con los agentes a incluir en el sniffer.
-	 * @throws Exception
+	 * @param agents List de String con los agentes a incluir en el sniffer.
+	 * @throws Exception si algo falla
 	 */
 	private static void addSniffer(AgentContainer mc, List<String> agents) throws Exception {
 		// Array de argumentos para el sniffer, contiene los nombres de los agentes sobre		

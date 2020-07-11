@@ -3,6 +3,13 @@ package es.um.poa.agents;
 import es.um.poa.utils.AgentLoggerWrapper;
 import jade.core.Agent;
 
+/**
+ * Clase padre de la que heredaran todos nuestros Agentes.
+ * Implementa el logger.
+ * 
+ * @author Jose Antonio Pina Gomez
+ *
+ */
 public class POAAgent extends Agent {
 
 	private static final long serialVersionUID = 1L;

@@ -1,9 +1,16 @@
 package es.um.poa.utils;
 
+/**
+ * Clase que contiene constantes con los ConversationID necesitados
+ * por los agentes en los protocolos
+ * 
+ * @author Jose Antonio Pina Gomez
+ * 
+ */
 public class ConversationID {
 
-	public final static String ADMISION_COMPRADOR = "AdmisionComprador";
-	public final static String REGISTRO_VENDEDOR = "RegistroVendedor";
+	public static final String ADMISION_COMPRADOR = "AdmisionComprador";
+	public static final String REGISTRO_VENDEDOR = "RegistroVendedor";
 	public static final String APERTURA_CREDITO = "AperturaCredito";
 	public static final String DEPOSITO_CAPTURA = "DepositoCaptura";
 	public static final String SUBSCRIPCION = "Subscripcion";

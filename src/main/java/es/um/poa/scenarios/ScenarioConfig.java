@@ -8,6 +8,7 @@ import java.util.List;
  * Ref: https://www.baeldung.com/java-snake-yaml
  * 
  *
+ * @author Externo
  */
 public class ScenarioConfig {
 	private String nombre;

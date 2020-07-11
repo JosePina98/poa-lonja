@@ -30,6 +30,12 @@ import jade.lang.acl.MessageTemplate;
 import jade.proto.AchieveREInitiator;
 import jade.proto.AchieveREResponder;
 
+/**
+ * Clase que representa al Agente Lonja
+ * 
+ * @author Jose Antonio Pina Gomez
+ *
+ */
 public class FishMarketAgent extends POAAgent{
 	
 	private static final long serialVersionUID = 1L;
@@ -46,7 +52,12 @@ public class FishMarketAgent extends POAAgent{
 	private float ingresos_lonja = 0;
 	private boolean activado = false;
 	private long tiempoLatencia;
-		
+	
+	/**
+	 * Funcion que sirve para incializar al agente y para repartir el resto de roles 
+	 * que habrá dentro de la lonja
+	 * 
+	 */
 	public void setup() {
 		super.setup();
 		Object[] args = getArguments();
@@ -77,30 +88,36 @@ public class FishMarketAgent extends POAAgent{
 				} catch(FIPAException fe) {
 					fe.printStackTrace();
 				}
-				// Añadimos el protocolo de adicion del comprador.
+				
+				// Inicializamos el rol de Receptor de Compradores (RRC)
 				MessageTemplate protocolo_admision_comprador = MessageTemplate.and(AchieveREResponder.createMessageTemplate(FIPANames.InteractionProtocol.FIPA_REQUEST),
 						MessageTemplate.MatchConversationId(ConversationID.ADMISION_COMPRADOR));
 				addBehaviour(new ProtocoloAdmisionCompradorResponder(this, protocolo_admision_comprador));
 				this.getLogger().info("INFO", "ProtocoloAdmisionComprador anadido con exito");
 				
+				// Inicializamos el rol de Admision de Vendedores (RAV)
 				MessageTemplate protocolo_registro_vendedor = MessageTemplate.and(AchieveREResponder.createMessageTemplate(FIPANames.InteractionProtocol.FIPA_REQUEST),
 						MessageTemplate.MatchConversationId(ConversationID.REGISTRO_VENDEDOR));
 				addBehaviour(new ProtocoloRegistroVendedorResponder(this, protocolo_registro_vendedor));
 				this.getLogger().info("INFO", "ProtocoloRegistroVendedor anadido con exito");
 				
+				// Inicializamos el rol de Gestor de Compras (RGC)
 				MessageTemplate protocolo_apertura_credito = MessageTemplate.and(AchieveREResponder.createMessageTemplate(FIPANames.InteractionProtocol.FIPA_REQUEST),
 						MessageTemplate.MatchConversationId(ConversationID.APERTURA_CREDITO));
 				addBehaviour(new ProtocoloAperturaCreditoResponder(this, protocolo_apertura_credito));
 				this.getLogger().info("INFO", "ProtocoloAperturaCredito anadido con exito");
 				
+				// Inicializamos el rol Receptor de Ventas (RRV)
 				addBehaviour(new ProtocoloDepositoResponder());
 				this.getLogger().info("INFO", "ProtocoloDeposito anadido con exito");
 				
+				// Inicializamos el rol de Terminacion de Compradores (RTC)
 				MessageTemplate protocolo_terminacion_comprador = MessageTemplate.and(AchieveREResponder.createMessageTemplate(FIPANames.InteractionProtocol.FIPA_REQUEST),
 						MessageTemplate.MatchConversationId(ConversationID.TERMINACION_COMPRADOR));
 				addBehaviour(new ProtocoloTerminacionResponder(this, protocolo_terminacion_comprador));
 				this.getLogger().info("INFO", "ProtocoloTerminacion anadido con exito");
 
+				// Inicializamos el rol de Subasta (RS)
 				addBehaviour(new ProtocoloSubastaInitiator());
 				this.getLogger().info("INFO", "ProtocoloSubasta anadido con exito");
 				
@@ -113,6 +130,12 @@ public class FishMarketAgent extends POAAgent{
 		}
 	}
 	
+	/**
+	 * Funcion que sirve para incializar al agente con los datos del fichero de configuracion.
+	 * 
+	 * @param fileName nombre del fichero de configuracion
+ 	 * @return devuelve un objeto FishMarketAgentConfig con los datos de configuracion
+	 */
 	private FishMarketAgentConfig initAgentFromConfigFile(String fileName) {
 		FishMarketAgentConfig config = null;
 		try {
@@ -127,6 +150,14 @@ public class FishMarketAgent extends POAAgent{
 		return config;
 	}
 	
+	/**
+	 * Clase privada que implementa el protocolo-admision-comprador.
+	 * 
+	 * Este protocolo lo manejará el Agente con el Rol Receptor de Compradores (RRC).
+	 * 
+	 * Los compradores inicializaran este protocolo para ser admitidos en la lonja.
+	 *
+	 */
 	@SuppressWarnings("serial")
 	private class ProtocoloAdmisionCompradorResponder extends AchieveREResponder {
 
@@ -187,6 +218,14 @@ public class FishMarketAgent extends POAAgent{
 		
 	}
 	
+	/**
+	 * Clase privada que implementa el protocolo-registro-vendedor.
+	 * 
+	 * Este protocolo lo manejara el agente con Rol Admision de Vendedores (RAV).
+	 * 
+	 * Los vendedores inicializaran este protocolo para registrarse en la Lonja.
+	 *  
+	 */
 	@SuppressWarnings("serial")
 	private class ProtocoloRegistroVendedorResponder extends AchieveREResponder {
 
@@ -247,6 +286,14 @@ public class FishMarketAgent extends POAAgent{
 		
 	}
 	
+	/**
+	 * Clase privada que implementa el protocolo-apertura-credito.
+	 * 
+	 * Este protocolo lo manejara el agente con Rol Gestor de Compras (RGC).
+	 * 
+	 * Los compradores inicializaran este protocolo para abrir su linea de credito.
+	 * 
+	 */
 	@SuppressWarnings("serial")
 	private class ProtocoloAperturaCreditoResponder extends AchieveREResponder {
 
@@ -307,6 +354,14 @@ public class FishMarketAgent extends POAAgent{
 		
 	}
 	
+	/**
+	 * Clase privada que implementa el protocolo-deposito.
+	 * 
+	 * Este protocolo lo manejara el agente con Rol Receptor de Ventas (RRV).
+	 * 
+	 * Los vendedores inicializaran este protocolo para ir depositando sus lotes para ser subastados.
+	 * 
+	 */
 	@SuppressWarnings("serial")
 	private class ProtocoloDepositoResponder extends CyclicBehaviour {
 
@@ -352,6 +407,16 @@ public class FishMarketAgent extends POAAgent{
 		
 	}
 	
+	/**
+	 * Clase privada que implementa el protocolo-subasta.
+	 * 
+	 * Este protocolo lo manejara el agente con Rol Subasta (RS).
+	 * 
+	 * Cuando la lonja tenga lotes preparadores para vender y compradores preparados para comprar
+	 * podrá iniciar la subasta de lotes. Si no se puede iniciar una subasta, espera 'tiempoLatencia' 
+	 * milisegundos para intentarlo de nuevo.
+	 * 
+	 */
 	@SuppressWarnings("serial")
 	private class ProtocoloSubastaInitiator extends CyclicBehaviour {
 		
@@ -508,6 +573,7 @@ public class FishMarketAgent extends POAAgent{
 						
 						mapaDineroVendedores.put(vendedor, mapaDineroVendedores.get(vendedor) + lote.getPrecioActual()); // Actualizamos el dinero del vendedor sin retirar
 
+						// Inicializamos el rol Gestor de Ventas (RGV)
 						ACLMessage aux = new ACLMessage(ACLMessage.REQUEST);
 						aux.setProtocol(FIPANames.InteractionProtocol.FIPA_REQUEST);
 						aux.addReceiver(vendedor);
@@ -563,6 +629,15 @@ public class FishMarketAgent extends POAAgent{
 		}
 	}
 	
+	/**
+	 * Clase privada que implementa el protocolo-terminacion.
+	 * 
+	 * Este protocolo lo manejara el agente con el Rol Terminacion Compradores (RTC).
+	 * 
+	 * Con este protocolo manejaremos la terminacion de compradores, dandolos de baja del sistema
+	 * para no incluirlos en futuras subastas.
+	 * 
+	 */
 	@SuppressWarnings("serial")
 	private class ProtocoloTerminacionResponder extends AchieveREResponder {
 
@@ -621,6 +696,15 @@ public class FishMarketAgent extends POAAgent{
 		
 	}
 	
+	/**
+	 * Clase privada que implementa el protocolo-cobro.
+	 * 
+	 * Este protocolo lo manejara el agente con Rol Gestor de Ventas (RGV).
+	 * 
+	 * Con este protocolo ofrecemos la posibilidad a un vendedor de cobrar el dinero obtenido
+	 * por la venta de sus lotes.
+	 * 
+	 */
 	@SuppressWarnings("serial")
 	private class ProtocoloCobroInitiator extends AchieveREInitiator {
 

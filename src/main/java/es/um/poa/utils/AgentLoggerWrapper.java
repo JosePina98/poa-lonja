@@ -9,6 +9,12 @@ import java.util.logging.Level;
 import jade.core.Agent;
 import jade.util.Logger;
 
+/**
+ * Clase que sirve para que los Agentes escriban mensaje en el log
+ * 
+ * @author Jose Antonio Pina Gomez
+ * 
+ */
 public class AgentLoggerWrapper {	
 	private Logger logger;
 	private Agent agent;

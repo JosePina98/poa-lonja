@@ -4,6 +4,12 @@ import java.util.Date;
 import java.util.logging.Handler;
 import java.util.logging.LogRecord;
 
+/**
+ * Clase que sirve para formatear el log en HTML
+ * 
+ * @author Jose Antonio Pina Gomez
+ * 
+ */
 public class AgentLoggingHTMLFormatter extends java.util.logging.Formatter {
 	@Override
 	public String format(LogRecord record) {

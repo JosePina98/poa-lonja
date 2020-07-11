@@ -1,5 +1,12 @@
 package es.um.poa.scenarios;
 
+/**
+ * Clase que sirve para configurar establecer los ficheros
+ * de configuracion de cada Agente
+ * 
+ * @author Jose Antonio Pina Gomez
+ *
+ */
 public class AgentRefConfig {
 	private String nombre;
 	private String configuracion;

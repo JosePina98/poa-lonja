@@ -2,6 +2,13 @@ package es.um.poa.agents.buyer;
 
 import java.util.List;
 
+/**
+ * Clase que sirve para configurar los Agentes compradores
+ * mediante un fichero de configuracion YAML
+ * 
+ * @author Jose Antonio Pina Gomez
+ *
+ */
 public class BuyerAgentConfig {
 	private float presupuesto;
 	private List<String> listaCompra;

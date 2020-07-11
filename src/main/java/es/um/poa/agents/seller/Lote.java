@@ -2,6 +2,12 @@ package es.um.poa.agents.seller;
 
 import java.io.Serializable;
 
+/**
+ * Clase que representa los lotes que se subastaran
+ * 
+ * @author Jose Antonio Pina Gomez
+ *
+ */
 public class Lote implements Serializable {
 
 	private static final long serialVersionUID = 6226280235403786174L;

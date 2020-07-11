@@ -24,6 +24,12 @@ import jade.lang.acl.ACLMessage;
 import jade.lang.acl.UnreadableException;
 import jade.proto.AchieveREInitiator;
 
+/**
+ * Clase que representa al Agente con el rol de Comprador
+ * 
+ * @author Jose Antonio Pina Gomez
+ *
+ */
 public class BuyerAgent extends POAAgent {
 		
 	private static final long serialVersionUID = 1L;
@@ -35,6 +41,9 @@ public class BuyerAgent extends POAAgent {
 	
 	private AID lonja;
 	
+	/**
+	 * Funcion que sirve para incializar al agente
+	 */
 	public void setup() {
 		super.setup();
 		
@@ -104,6 +113,9 @@ public class BuyerAgent extends POAAgent {
 		}
 	}
 	
+	/**
+	 * Sobreescribimos la funcion takeDown para escribir un mensaje de despedida en el log.
+	 */
 	@Override
 	public void takeDown() {
 
@@ -113,6 +125,12 @@ public class BuyerAgent extends POAAgent {
 		super.takeDown();
 	}
 	
+	/**
+	 * Funcion que sirve para incializar al agente con los datos del fichero de configuracion.
+	 * 
+	 * @param fileName nombre del fichero de configuracion
+ 	 * @return devuelve un objeto BuyerAgentConfig con los datos de configuracion
+	 */
 	private BuyerAgentConfig initAgentFromConfigFile(String fileName) {
 		BuyerAgentConfig config = null;
 		try {
@@ -127,7 +145,11 @@ public class BuyerAgent extends POAAgent {
 		return config;
 	}
 
-	
+	/**
+	 * Clase privada que implementa el protocolo-admision-comprador.
+	 * 
+	 * Este protocolo se usará una vez por comprador, al entrar por primera vez en la lonja.
+	 */
 	@SuppressWarnings("serial")
 	private class ProtocoloAdmisionCompradorInitiator extends AchieveREInitiator {
 
@@ -184,6 +206,14 @@ public class BuyerAgent extends POAAgent {
 		
 	}
 	
+	/**
+	 * Clase privada que implementa el protocolo-apertura-credito.
+	 * 
+	 * Este protocolo se usará una vez por comprador, despues de ser admitido en la lonja.
+	 * Enviamos nuestro presupuesto en el mensaje REQUEST y esperamos respuesta del agente 
+	 * con el rol de Gestor de Compras.
+	 * 
+	 */
 	@SuppressWarnings("serial")
 	private class ProtocoloAperturaCreditoInitiator extends AchieveREInitiator {
 
@@ -240,6 +270,14 @@ public class BuyerAgent extends POAAgent {
 		
 	}
 	
+	/**
+	 * Clase privada que implementa el protocolo-subasta.
+	 * 
+	 * Recibimos un PROPOSE del agente con el rol de Subasta y tendremos que decidir
+	 * si pujamos o no. Si luego recibimos un INFORM significará que hemos ganado la puja
+	 * y podremos retirar los articulos (protocolo-retirada-compras).
+	 * 
+	 */
 	@SuppressWarnings("serial")
 	private class ProtocoloSubastaResponder extends Behaviour {
 		
@@ -302,7 +340,7 @@ public class BuyerAgent extends POAAgent {
 							getLogger().info("ProtocoloRetirada", "Se ha retirado correctamente el lote de: " + 
 									lote.getKg() + "kg de " + lote.getTipo() + ". El presupuesto restante es " + presupuesto);
 							
-							if (listaCompra.isEmpty()) {
+							if (listaCompra.isEmpty() || presupuesto == 0) {
 								getLogger().info("INFO", "El Comprador \"" + getAID().getLocalName() + "\" ha completado su lista de la compra");
 
 								ACLMessage aux = new ACLMessage(ACLMessage.REQUEST);
@@ -341,70 +379,13 @@ public class BuyerAgent extends POAAgent {
 		
 	}
 	
-//	private class ProtocoloRetiradaComprasInitiator extends AchieveREInitiator {
-//
-//		private static final long serialVersionUID = 1L;
-//		
-//		public ProtocoloRetiradaComprasInitiator(Agent a, ACLMessage msg) {
-//			super(a, msg);
-//		}
-//		
-//		/**
-//		 * Este metodo es ejecutado justo antes del comienzo de la ejecucion 
-//		 * del comportamiento. Lo uso para imprimir mensajes de log.
-//		 */
-//		@Override
-//		public void onStart() {
-//			super.onStart();
-//			getLogger().info("ProtocoloRetirada - Initiator", "ProtocoloRetirada iniciado");
-//		}
-//		
-//		@SuppressWarnings("unchecked")
-//		@Override
-//		protected void handleInform(ACLMessage inform) {
-//			
-//			List<Lote> listaLotes = null;
-//			try {
-//				listaLotes = (List<Lote>) inform.getContentObject();
-//			} catch (UnreadableException e) {
-//				e.printStackTrace();
-//			}
-//			
-//			if (listaLotes != null) {
-//				for (Lote lote : listaLotes) {
-//					presupuesto -= lote.getPrecioActual();
-//					lotesComprados.add(lote);
-//					
-//					getLogger().info("ProtocoloRetirada - Initiator", "Se ha retirado correctamente el lote de: " + 
-//							lote.getKg() + "kg de " + lote.getTipo() + ". El presupuesto restante es " + presupuesto);
-//				}
-//				
-//				myAgent.doDelete();
-//			} else {
-//				getLogger().info("ProtocoloRetirada - Initiator", "No se ha podido retirar ningun lote");
-//			}
-//		}
-//		
-//		/**
-//		 * Maneja los mensajes failure recibidos.
-//		 * Se llama al padre y se añaden ordenes para la depuracion.
-//		 */
-//		@Override
-//		protected void handleFailure(ACLMessage msg) {
-//			getLogger().info("ProtocoloRetirada - Initiator", "FAILURE recibido de \"" + msg.getSender().getLocalName() + "\", no queda ningun lote por retirar");
-//			super.handleFailure(msg);
-//		}
-//		/**
-//		 * Maneja los mensajes refuse recibidos.
-//		 * Se llama al padre y se añaden ordenes para la depuracion.
-//		 */
-//		@Override
-//		protected void handleRefuse(ACLMessage msg) {
-//			getLogger().info("ProtocoloRetirada - Initiator", "REFUSE recibido de \"" + msg.getSender().getLocalName() + "\", no se ha podido retirar ningun lote");
-//			super.handleRefuse(msg);
-//		}
-//	}
-	
+	/**
+	 * Clase privada que implementa el protocolo-terminacion.
+	 * 
+	 * Este protocolo se usará una vez por comprador, cuando ya haya completado su lista de la compra
+	 * o su presupuesto sea 0. Sirve para informar a la lonja de que vamos a terminar la ejecucion.
+	 * 
+	 */
 	@SuppressWarnings("serial")
 	private class ProtocoloTerminacionInitiator extends AchieveREInitiator {
 
