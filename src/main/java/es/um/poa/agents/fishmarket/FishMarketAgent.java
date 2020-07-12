@@ -589,7 +589,6 @@ public class FishMarketAgent extends POAAgent{
 						// Puja incorrecta, el comprador no tiene suficiente dinero
 						ACLMessage mensaje = respuesta.createReply();
 						mensaje.setPerformative(ACLMessage.REFUSE);
-						mensaje.addReceiver(respuesta.getSender());
 						try {
 							mensaje.setContentObject(lote);
 						} catch (IOException e) {

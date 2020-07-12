@@ -37,7 +37,7 @@ public class BuyerAgent extends POAAgent {
 	private float presupuesto;
 	private List<String> listaCompra;
 	private List<Lote> lotesComprados;
-	private static final double PROBABILIDAD_PUJAR = 0.4;
+	private static final double PROBABILIDAD_PUJAR = 0.99;
 	
 	private AID lonja;
 	
@@ -341,7 +341,11 @@ public class BuyerAgent extends POAAgent {
 									lote.getKg() + "kg de " + lote.getTipo() + ". El presupuesto restante es " + presupuesto);
 							
 							if (listaCompra.isEmpty() || presupuesto == 0) {
-								getLogger().info("INFO", "El Comprador \"" + getAID().getLocalName() + "\" ha completado su lista de la compra");
+								if (listaCompra.isEmpty()) {
+									getLogger().info("INFO", "El Comprador \"" + getAID().getLocalName() + "\" ha completado su lista de la compra");									
+								} else {
+									getLogger().info("INFO", "El Comprador \"" + getAID().getLocalName() + "\" se ha quedado sin presupuesto");	
+								}
 
 								ACLMessage aux = new ACLMessage(ACLMessage.REQUEST);
 								aux.setProtocol(FIPANames.InteractionProtocol.FIPA_REQUEST);
@@ -360,7 +364,7 @@ public class BuyerAgent extends POAAgent {
 						}
 						
 						if (lote != null) {
-							getLogger().info("ProtocoloSubasta - Responder", "No podemos pujar " + lote.getPrecioActual() + " si solo tenemos + " + presupuesto);
+							getLogger().info("ProtocoloSubasta - Responder", "No podemos pujar " + lote.getPrecioActual() + " si solo tenemos " + presupuesto);
 						}
 						
 					} else {

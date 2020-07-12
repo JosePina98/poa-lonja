@@ -1,0 +1,16 @@
+!!es.um.poa.scenarios.ScenarioConfig
+nombre: "EscenarioEjemplo"
+descripcion: "Ejemplo para hacer una configuracion YAML"
+lonja:
+  nombre: "Lonja"
+  configuracion: "configs/fishMarket.yaml"
+compradores:
+  - nombre: "Comprador1"
+    configuracion: "configs/buyerType4.yaml"
+  - nombre: "Comprador2"
+    configuracion: "configs/buyerType5.yaml"
+vendedores:
+  - nombre: "Vendedor1"
+    configuracion: "configs/sellerType1.yaml"
+  - nombre: "Vendedor2"
+    configuracion: "configs/sellerType1.yaml"
